@@ -1,0 +1,85 @@
+#include <chrono>
+#include <cassert>
+#include <iostream>
+
+
+#define DEBUG_VERBOSE
+
+template< class T >
+exchanger_lockfree<T>::exchanger_lockfree(){
+    // _node_empty = new Node;
+    // _node_waiting = new Node;
+    // _node_exchanged = new Node;
+    // _node_complete = new Node;
+    // _node.store( empty, std::memory_order_release );
+    _status.store( exchanger_status::EMPTY );
+}
+template< class T >
+exchanger_lockfree<T>::~exchanger_lockfree(){
+}
+template< class T >
+bool exchanger_lockfree<T>::exchange( T & item, long timeout_us ){
+
+    //try exchange with another thread via the exchanger node with specified timeout duration
+    std::chrono::high_resolution_clock::time_point time_enter = std::chrono::high_resolution_clock::now();
+    while(true){
+	//test for timeout constraint
+	std::chrono::high_resolution_clock::time_point time_now = std::chrono::high_resolution_clock::now();
+	auto diff = time_now - time_enter;
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
+	if( duration > timeout_us ){
+#ifdef DEBUG_VERBOSE
+	    std::cout << "entering: timeout segment 1." << std::endl;
+#endif
+	    return false;
+	}
+	//try deposit value into empty node
+	exchanger_status empty = exchanger_status::EMPTY;
+	if( _status.compare_exchange_weak( empty, exchanger_status::WAITING, std::memory_order_acq_rel ) ){
+	    //active thread deposited a value and waits for 2nd thread to exchange
+	    while(true){
+		time_now = std::chrono::high_resolution_clock::now();
+		diff = time_now - time_enter;
+		duration = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
+		if( duration > timeout_us ){
+		    break;
+		}
+		//try check on deposited node for status change
+		exchanger_status waiting = exchanger_status::WAITING;
+		_val = item;
+		_status.store( waiting, std::memory_order_release );
+		while(true){
+		    time_now = std::chrono::high_resolution_clock::now();
+		    diff = time_now - time_enter;
+		    duration = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
+		    if( duration > timeout_us ){
+			break;
+		    }
+		    exchanger_status exchanged = exchanger_status::EXCHANGED;
+		    if( _status.compare_exchange_weak( exchanged, exchanger_status::COMPLETE, std::memory_order_acq_rel ) ){
+			exchanger_status empty_again = exchanger_status::EMPTY;
+			item = _val;
+			_status.store( empty_again, std::memory_order_release );
+			return true;
+		    }
+		}
+	    }
+	    
+	}else{
+	    //passive thread path
+	    Node * prev = _node.load( std::memory_order_acquire );
+	    if( nullptr != prev && n != prev ){
+		if( exchanger_status::WAITING == prev->_status ){
+		    //swap and deposit
+		    T temp = item;
+		    item = prev->_val;
+		    prev->_val = temp;
+		    prev->_status = exchanger_status::EXCHANGED;
+		    _node.store( prev, std::memory_order_release );
+		    return true;
+		}
+	    }
+	}
+    }
+    return false;
+}

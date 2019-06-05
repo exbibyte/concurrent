@@ -1,0 +1,33 @@
+//---based on Art of Multiprocessor Programming section 11.4
+#ifndef EXCHANGER_LOCKFREE_H
+#define EXCHANGER_LOCKFREE_H
+
+#include <atomic>
+
+enum class exchanger_status { //expected to be monotically increasing in terms of exchange progression
+    EMPTY, //resource is empty
+    WAITING, //active thread has deposited its value
+    EXCHANGED, //2nd thread has swapped its value
+    COMPLETE,
+};
+
+template< class T >
+class exchanger_lockfree {
+public:
+    using _t_val = T;
+    // class Node {
+    // public:
+    // 	T _val;
+    // };
+    // using _t_node = std::atomic< Node * >;
+              exchanger_lockfree();
+              ~exchanger_lockfree();
+    std::atomic<exchanger_status> _status;
+      // _t_node _node;
+            T _val;
+         bool exchange( T & item, long timeout_us ); //true if exchanged with another thread, false if timed out
+};
+
+#include "exchanger_lockfree.tpp"
+
+#endif
