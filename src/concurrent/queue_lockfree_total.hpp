@@ -1,7 +1,8 @@
 //--unbounded lock free total queue
-//---based on Art of Multiprocessor Programming section 10.5
-#ifndef QUEUE_LF_TOTAL_H
-#define QUEUE_LF_TOTAL_H
+//---uses hazard pointer memory reclamation
+
+#ifndef QUEUE_LF_TOTAL_HPP
+#define QUEUE_LF_TOTAL_HPP
 
 #include <cstring>
 #include <atomic>
@@ -22,10 +23,11 @@ public:
                       _t_val _val;
                              Node(): _next( nullptr ) {}
                              Node( _t_val const & val ): _val(val), _next( nullptr ) {}
-	      };
+              };
 
                queue_lockfree_total_impl();
                ~queue_lockfree_total_impl();
+   static void thread_deinit(); //to be called when a thread exits
           bool clear();
           bool empty();
        _t_size size();                                                 //approximate count of the container size
@@ -42,9 +44,9 @@ private:
 
 template< class T >
 using queue_lockfree_total = IPool< T, queue_lockfree_total_impl,
-				    trait_pool_size::unbounded,
-				    trait_pool_concurrency::lockfree,
-				    trait_pool_method::total,
-				    trait_pool_fairness::fifo>;
+                                    trait_pool_size::unbounded,
+                                    trait_pool_concurrency::lockfree,
+                                    trait_pool_method::total,
+                                    trait_pool_fairness::fifo>;
 
 #endif

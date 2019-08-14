@@ -21,8 +21,10 @@ $(shell mkdir -p $(dir_build))
 
 targets := $(patsubst %.cpp, %, $(wildcard *.cpp))
 
+libs := -pthread
+
 %: %.cpp
-	$(CXX) -g -std=c++14 -o $(dir_build)/$@ $^ $(object_files) $(include_flags)
+	$(CXX) -g -std=c++14 -o $(dir_build)/$@ $^ $(object_files) $(include_flags) $(libs)
 
 build_memory:
 	$(MAKE) -C ./../../src/memory all
