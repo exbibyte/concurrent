@@ -1,56 +1,39 @@
-#ifndef ILIST_H
-#define ILIST_H
+#ifndef ILIST_HPP
+#define ILIST_HPP
 
 #include <utility>
 #include <functional>
 
-class trait_list_concurrency {
-public:
-    class none{};
-    class global{};
-    class granular{};
-    class lockfree{};
-    class waitfree{};
-};
+#include "IReclamation.hpp"
+#include "IConcurrency.hpp"
+#include "ISize.hpp"
 
-class trait_list_size {
-public:
-    class bounded{};
-    class unbounded{};
-};
-
-class trait_list_method {
-public:
-    class total{};
-    class partial{};
-    class synchronous{};
-};
-
-template< class T, template< class > class ContainerType, class ListSize, class ListConcurrency, class ListMethod >
-class IList final : public ContainerType<T> {
+template< class T, template< class, trait_reclamation > class ContainerType, trait_size list_size_, trait_concurrency list_concurrency_, trait_method list_method_, trait_reclamation reclam >
+class IList final : public ContainerType<T, reclam> {
 public:
         //container and value traits
-        using container_type =     ContainerType<T>;
+        using container_type =     ContainerType<T, reclam>;
 	using value_type =         T;
 	using reference =          T &;
 	using const_reference =    T const &;
-	using size_type =          typename ContainerType<T>::_t_size;
+	using size_type =          typename container_type::_t_size;
 
         //list traits
-        using list_size =          ListSize;
-	using list_concurrency =   ListConcurrency;
-	using list_method =        ListMethod;
-
+        constexpr static trait_size list_size = list_size_;
+	constexpr static trait_concurrency list_concurrency = list_concurrency_;
+	constexpr static trait_method list_method = list_method_;
+        constexpr static trait_reclamation list_reclamation = reclam;
+    
               template< class... Args >
-              IList( Args... args ) : ContainerType<T>( std::forward<Args>(args)... ) {}
+              IList( Args... args ) : container_type( std::forward<Args>(args)... ) {}
               ~IList(){}
     
-         bool clear(){ return ContainerType<T>::clear(); }
-         bool empty(){ return ContainerType<T>::empty(); }
-    size_type size(){ return ContainerType<T>::size(); }
-         bool add( const_reference item, size_t key ){ return ContainerType<T>::add( item, key ); }
-         bool remove( value_type & item, size_t key ){ return ContainerType<T>::remove( item, key ); }
-         bool contains( const_reference item, size_t key ){ return ContainerType<T>::contains( item, key ); }
+         bool clear(){ return container_type::clear(); }
+         bool empty(){ return container_type::empty(); }
+    size_type size(){ return container_type::size(); }
+         bool add( const_reference item, size_t key ){ return container_type::add( item, key ); }
+         bool remove( value_type & item, size_t key ){ return container_type::remove( item, key ); }
+         bool contains( const_reference item, size_t key ){ return container_type::contains( item, key ); }
 };
 
 #endif

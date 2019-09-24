@@ -15,8 +15,8 @@
 
 using namespace std;
 
-TEST_CASE( "queue_lockfree_sync stress", "[stress]" ) { 
-    queue_lockfree_sync<int> p;
+TEST_CASE( "queue_lockfree_sync stress", "[stress]" ) {
+    queue_lockfree_sync<int,trait_reclamation::not_applicable> p;
     unsigned int num_threads = 200;
     stress_pool::stress_put_get_int( num_threads, p );
 }

@@ -1,12 +1,12 @@
 //---based on Art of Multiprocessor Programming section 9.8
-#ifndef LIST_LOCKFREE_TOTAL_H
-#define LIST_LOCKFREE_TOTAL_H
+#ifndef LIST_LOCKFREE_TOTAL_HPP
+#define LIST_LOCKFREE_TOTAL_HPP
 
 #include <cstring>
 #include <atomic>
 #include "IList.hpp"
 
-template< class T >
+template< class T, trait_reclamation reclam >
 class list_lockfree_total_impl {
 public:
     using _t_size = size_t;
@@ -41,11 +41,11 @@ private:
 
 #include "list_lockfree_total.tpp"
 
-template< class T >
+template< class T, trait_reclamation reclam >
 using list_lockfree_total = IList< T, list_lockfree_total_impl,
-				   trait_list_size::unbounded,
-				   trait_list_concurrency::lockfree,
-				   trait_list_method::total
-				   >;
+				   trait_size::unbounded,
+				   trait_concurrency::lockfree,
+				   trait_method::total,
+				   reclam >;
 
 #endif

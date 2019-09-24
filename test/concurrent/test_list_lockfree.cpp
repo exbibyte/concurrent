@@ -12,7 +12,7 @@
 using namespace std;
 
 TEST_CASE( "list_lockfree_total single thread", "[list total]" ) { 
-    list_lockfree_total<int> l;
+    list_lockfree_total<int,trait_reclamation::not_applicable> l;
     CHECK( l.size() == 0 );
     CHECK( l.empty() == true );
     size_t n = 20;

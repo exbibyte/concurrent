@@ -1,6 +1,6 @@
 //implementation of split reference lock free stack based on C++ Concurrency in Action Section 7.2
-#ifndef STACK_LF_SPLIT_REF_H
-#define STACK_LF_SPLIT_REF_H
+#ifndef STACK_LF_SPLIT_REF_HPP
+#define STACK_LF_SPLIT_REF_HPP
 
 #include <atomic>
 #include <cstddef>
@@ -8,7 +8,9 @@
 
 #include "IPool.hpp"
 
-template< class T >
+//todo: specialize for reclamation
+
+template< class T, trait_reclamation reclam >
 class stack_lockfree_split_reference_impl {
 public:
     using _t_size = size_t;
@@ -41,11 +43,12 @@ private:
 
 #include "stack_lockfree_split_reference.tpp"
 
-template< class T >
+template< class T, trait_reclamation reclam >
 using stack_lockfree_split_reference = IPool< T, stack_lockfree_split_reference_impl,
-					      trait_pool_size::unbounded,
-					      trait_pool_concurrency::lockfree,
-					      trait_pool_method::partial,
-					      trait_pool_fairness::lifo >;
+					      trait_size::unbounded,
+					      trait_concurrency::lockfree,
+					      trait_method::partial,
+					      trait_fairness::lifo,
+					      reclam >;
 
 #endif

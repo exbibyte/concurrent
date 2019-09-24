@@ -6,8 +6,10 @@
 #include <cstddef>
 #include <mutex>
 
-template< class T >
-bool stack_lockfree_split_reference_impl<T>::push( T const & val ){
+//todo: specialize for reclamation
+
+template< class T, trait_reclamation reclam >
+bool stack_lockfree_split_reference_impl<T, reclam>::push( T const & val ){
     //create new external and internal nodes for the associated value
     NodeExternal * new_node = new NodeExternal;
     new_node->_node = new Node( val );
@@ -17,8 +19,8 @@ bool stack_lockfree_split_reference_impl<T>::push( T const & val ){
     while( !_head.compare_exchange_weak( new_node->_node->_next, new_node, std::memory_order_release, std::memory_order_relaxed ) );
     return true;
 }
-template< class T >
-bool stack_lockfree_split_reference_impl<T>::AcquireNode( NodeExternal * & external_node ){
+template< class T, trait_reclamation reclam >
+bool stack_lockfree_split_reference_impl<T, reclam>::AcquireNode( NodeExternal * & external_node ){
     //gain ownership of the head
     NodeExternal * temp = new NodeExternal;
     do {
@@ -37,8 +39,8 @@ bool stack_lockfree_split_reference_impl<T>::AcquireNode( NodeExternal * & exter
     return true;
 }
 
-template< class T >
-bool stack_lockfree_split_reference_impl<T>::pop( T & val ){
+template< class T, trait_reclamation reclam >
+bool stack_lockfree_split_reference_impl<T, reclam>::pop( T & val ){
     NodeExternal * head = _head.load( std::memory_order_relaxed );
     while( true ) {
 	if( !AcquireNode( head ) )
@@ -77,8 +79,8 @@ bool stack_lockfree_split_reference_impl<T>::pop( T & val ){
     return true;
 }
 
-template< class T >
-size_t stack_lockfree_split_reference_impl<T>::size() const {
+template< class T, trait_reclamation reclam >
+size_t stack_lockfree_split_reference_impl<T, reclam>::size() const {
     NodeExternal * current_node = _head.load( std::memory_order_relaxed );
     size_t count = 0;
     while( current_node ){

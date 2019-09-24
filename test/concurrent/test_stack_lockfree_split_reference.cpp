@@ -14,7 +14,7 @@ using namespace std;
 
 TEST_CASE( "stack_lockfree_split_reference", "[stack split reference]" ) { 
 
-    stack_lockfree_split_reference<int> stack;
+    stack_lockfree_split_reference<int, trait_reclamation::not_applicable> stack;
 
     SECTION( "put" ) {
 	size_t count = stack.size();

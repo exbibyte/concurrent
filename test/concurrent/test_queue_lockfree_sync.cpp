@@ -16,7 +16,7 @@ using namespace std;
 
 TEST_CASE( "queue_lockfree_sync bulk operations", "[bulk]" ) { 
 
-    queue_lockfree_sync<int> queue;
+    queue_lockfree_sync<int, trait_reclamation::not_applicable> queue;
 
     unsigned int num_threads = 100;
     vector<thread> threads_put( num_threads );
@@ -101,7 +101,7 @@ TEST_CASE( "queue_lockfree_sync bulk operations", "[bulk]" ) {
 }
 TEST_CASE( "queue_lockfree_sync bulk operations reversed", "[bulk_rev]" ) { 
 
-    queue_lockfree_sync<int> queue;
+    queue_lockfree_sync<int, trait_reclamation::not_applicable> queue;
 
     unsigned int num_threads = 100;
     vector<thread> threads_put( num_threads );
@@ -188,7 +188,7 @@ TEST_CASE( "queue_lockfree_sync bulk operations reversed", "[bulk_rev]" ) {
 }
 TEST_CASE( "queue_lockfree_sync interleaved operations", "[interleaved]" ) {
 
-    queue_lockfree_sync<int> queue;
+    queue_lockfree_sync<int, trait_reclamation::not_applicable> queue;
 
     unsigned int num_threads = 100;
     vector<thread> threads_put( num_threads );
@@ -274,7 +274,7 @@ TEST_CASE( "queue_lockfree_sync interleaved operations", "[interleaved]" ) {
 
 TEST_CASE( "queue_lockfree_sync bulk operations functor", "[bulk functor]" ) { 
 
-    queue_lockfree_sync<int> queue;
+    queue_lockfree_sync<int, trait_reclamation::not_applicable> queue;
 
     unsigned int num_threads = 100;
     vector<thread> threads_put( num_threads );
@@ -309,7 +309,7 @@ TEST_CASE( "queue_lockfree_sync bulk operations functor", "[bulk functor]" ) {
 		    ret = b;
 		    val = std::move(v);
 		};
-	        queue.get_fun( f_get );
+	        queue.get_with( f_get );
 		if( ret ){
 		    *ret_val_ptr = 1;
 		    *item_ptr = val;

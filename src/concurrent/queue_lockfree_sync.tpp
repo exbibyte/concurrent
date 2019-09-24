@@ -1,16 +1,19 @@
 #include <iostream>
+#include <cassert>
+
+//todo: needs safe memory reclaimation
 
 //#define DEBUG_VERBOSE
 
-template< typename T >
-queue_lockfree_sync_impl<T>::queue_lockfree_sync_impl(){
+template< typename T, trait_reclamation reclam >
+queue_lockfree_sync_impl<T, reclam>::queue_lockfree_sync_impl(){
     Node * sentinel = new Node();
     sentinel->_type.store( NodeType::SENTINEL, std::memory_order_release );
     _head.store( sentinel );
     _tail.store( sentinel );
 }
-template< typename T >
-queue_lockfree_sync_impl<T>::~queue_lockfree_sync_impl(){
+template< typename T, trait_reclamation reclam >
+queue_lockfree_sync_impl<T, reclam>::~queue_lockfree_sync_impl(){
     clear();
     Node * n = _head.load();
     if( _head.compare_exchange_strong( n, nullptr ) ){
@@ -21,8 +24,8 @@ queue_lockfree_sync_impl<T>::~queue_lockfree_sync_impl(){
         }
     }
 }
-template< typename T >
-bool queue_lockfree_sync_impl<T>::push_back( T const & val ){ //push an item to the tail
+template< typename T, trait_reclamation reclam >
+bool queue_lockfree_sync_impl<T, reclam>::push_back( T const & val ){ //push an item to the tail
     Node * new_node = new Node( val ); //type is ITEM if value argument is present
     while( true ){
         Node * tail = _tail.load( std::memory_order_acquire );
@@ -105,10 +108,11 @@ bool queue_lockfree_sync_impl<T>::push_back( T const & val ){ //push an item to 
 	    std::this_thread::yield();
 	}
     }
+    assert(false && "unexpected path");
     return false; //shouldn't come here
 }
-template< typename T >
-bool queue_lockfree_sync_impl<T>::pop_front( T & val ){ //pop an item from the head
+template< typename T, trait_reclamation reclam >
+bool queue_lockfree_sync_impl<T, reclam>::pop_front( T & val ){ //pop an item from the head
     //mirror implementation to that of push_back
     Node * new_node = new Node(); //type is RESERVATION if value argument is absent
     while( true ){
@@ -192,10 +196,11 @@ bool queue_lockfree_sync_impl<T>::pop_front( T & val ){ //pop an item from the h
 	    std::this_thread::yield();
 	}
     }
+    assert(false && "unexpected path");
     return false; //shouldn't come here
 }
-template< typename T >
-size_t queue_lockfree_sync_impl<T>::size(){
+template< typename T, trait_reclamation reclam >
+size_t queue_lockfree_sync_impl<T, reclam>::size(){
     size_t count = 0;
     Node * node = _head.load();
     if( nullptr == node ){
@@ -211,12 +216,12 @@ size_t queue_lockfree_sync_impl<T>::size(){
     }
     return count - 1; //discount for sentinel node
 }
-template< typename T >
-bool queue_lockfree_sync_impl<T>::empty(){
+template< typename T, trait_reclamation reclam >
+bool queue_lockfree_sync_impl<T, reclam>::empty(){
     return size() == 0;
 }
-template< typename T >
-bool queue_lockfree_sync_impl<T>::clear(){
+template< typename T, trait_reclamation reclam >
+bool queue_lockfree_sync_impl<T, reclam>::clear(){
     while( !empty() ){
 #ifdef DmEBUG_SPINLOCK
 	std::cout << "clear: size: " << this->size() << std::endl;

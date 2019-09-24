@@ -13,7 +13,7 @@ using namespace std;
 
 TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) { 
 
-    stack_lockfree_total_simple<int> stack;
+    stack_lockfree_total_simple<int, trait_reclamation::not_applicable> stack;
 
     SECTION( "put" ) {
 	size_t count = stack.size();

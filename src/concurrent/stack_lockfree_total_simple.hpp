@@ -1,12 +1,12 @@
-#ifndef STACK_LF_TOTAL_SIMPLE_H
-#define STACK_LF_TOTAL_SIMPLE_H
+#ifndef STACK_LF_TOTAL_SIMPLE_HPP
+#define STACK_LF_TOTAL_SIMPLE_HPP
 
 #include <atomic>
 #include <cstddef>
 
 #include "IPool.hpp"
 
-template< class T >
+template< class T, trait_reclamation reclam >
 class stack_lockfree_total_simple_impl {
 public:
     using _t_size = size_t;
@@ -35,10 +35,11 @@ private:
 
 #include "stack_lockfree_total_simple.tpp"
 
-template< class T >
+template< class T, trait_reclamation reclam >
 using stack_lockfree_total_simple = IPool< T, stack_lockfree_total_simple_impl,
-					   trait_pool_size::unbounded,
-					   trait_pool_concurrency::lockfree,
-					   trait_pool_method::total,
-					   trait_pool_fairness::lifo >;
+					   trait_size::unbounded,
+					   trait_concurrency::lockfree,
+					   trait_method::total,
+					   trait_fairness::lifo,
+					   reclam >;
 #endif

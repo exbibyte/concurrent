@@ -1,15 +1,16 @@
-#include <iostream>
+//specialization for hazard pointer reclamation
 
+#include <iostream>
 #include "reclaim_hazard.hpp"
 
 template< typename T >
-queue_lockfree_total_impl<T>::queue_lockfree_total_impl(){
+queue_lockfree_total_impl<T, trait_reclamation::hp>::queue_lockfree_total_impl(){
     Node * sentinel = new Node();
     _head.store( sentinel );
     _tail.store( sentinel );
 }
 template< typename T >
-queue_lockfree_total_impl<T>::~queue_lockfree_total_impl(){
+queue_lockfree_total_impl<T, trait_reclamation::hp>::~queue_lockfree_total_impl(){
 
     //must ensure there are no other threads accessing the datastructure
   
@@ -32,12 +33,12 @@ queue_lockfree_total_impl<T>::~queue_lockfree_total_impl(){
 }
 
 template< typename T >
-void queue_lockfree_total_impl<T>::thread_deinit(){
+void queue_lockfree_total_impl<T, trait_reclamation::hp>::thread_deinit(){
     reclaim_hazard<Node>::thread_deinit();
 }
 
 template< typename T >
-bool queue_lockfree_total_impl<T>::push_back( T const & val ){ //push item to the tail
+bool queue_lockfree_total_impl<T, trait_reclamation::hp>::push_back( T const & val ){ //push item to the tail
     Node * new_node = new Node( val );
     while( true ){
 	Node * tail = _tail.load( std::memory_order_relaxed );
@@ -64,7 +65,7 @@ bool queue_lockfree_total_impl<T>::push_back( T const & val ){ //push item to th
     }
 }
 template< typename T >
-bool queue_lockfree_total_impl<T>::pop_front( T & val ){ //obtain item from the head
+bool queue_lockfree_total_impl<T, trait_reclamation::hp>::pop_front( T & val ){ //obtain item from the head
     while( true ){
         Node * head = _head.load( std::memory_order_relaxed );
 
@@ -107,7 +108,7 @@ bool queue_lockfree_total_impl<T>::pop_front( T & val ){ //obtain item from the 
 }
 
 template< typename T >
-size_t queue_lockfree_total_impl<T>::size(){
+size_t queue_lockfree_total_impl<T, trait_reclamation::hp>::size(){
     size_t count = 0;
     Node * node = _head.load();
     if( nullptr == node ){
@@ -121,11 +122,11 @@ size_t queue_lockfree_total_impl<T>::size(){
     return count - 1; //discount for sentinel node
 }
 template< typename T >
-bool queue_lockfree_total_impl<T>::empty(){
+bool queue_lockfree_total_impl<T, trait_reclamation::hp>::empty(){
     return size() == 0;
 }
 template< typename T >
-bool queue_lockfree_total_impl<T>::clear(){
+bool queue_lockfree_total_impl<T, trait_reclamation::hp>::clear(){
     size_t count = 0;
     while( !empty() ){
         T t;

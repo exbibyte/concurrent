@@ -13,7 +13,7 @@
 using namespace std;
 
 TEST_CASE( "stack_lockfree_total_simple stress", "[stress]" ) {
-    stack_lockfree_total_simple<int> p;
+    stack_lockfree_total_simple<int, trait_reclamation::not_applicable> p;
     unsigned int num_threads = 10000;
     stress_pool::stress_put_get_int( num_threads, p );
 }

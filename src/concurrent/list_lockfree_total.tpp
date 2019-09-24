@@ -1,18 +1,18 @@
-template< class T >
-list_lockfree_total_impl< T >::list_lockfree_total_impl(){
+template< class T, trait_reclamation reclam >
+list_lockfree_total_impl< T, reclam >::list_lockfree_total_impl(){
     Node * h = new Node;
     h->_is_head = true;
     _head.store( h, std::memory_order_release );
 }
-template< class T >
-list_lockfree_total_impl< T >::~list_lockfree_total_impl(){
+template< class T, trait_reclamation reclam >
+list_lockfree_total_impl< T, reclam >::~list_lockfree_total_impl(){
     clear();
     Node * h = _head.load( std::memory_order_acquire );
     if( h )
 	delete h;
 }
-template< class T >
-bool list_lockfree_total_impl< T >::clear(){
+template< class T, trait_reclamation reclam >
+bool list_lockfree_total_impl< T, reclam >::clear(){
     Node * n = _head.load( std::memory_order_acquire );
     n = n->_next.load( std::memory_order_acquire );
     while( n ){
@@ -28,12 +28,12 @@ bool list_lockfree_total_impl< T >::clear(){
     }
     return false;
 }
-template< class T >
-bool list_lockfree_total_impl< T >::empty(){
+template< class T, trait_reclamation reclam >
+bool list_lockfree_total_impl< T, reclam >::empty(){
     return size() == 0;
 }
-template< class T >
-size_t list_lockfree_total_impl< T >::size(){
+template< class T, trait_reclamation reclam >
+size_t list_lockfree_total_impl< T, reclam >::size(){
     size_t count = 0;
     Node * n = _head.load( std::memory_order_acquire );
     n = n->_next.load( std::memory_order_acquire );
@@ -44,10 +44,10 @@ size_t list_lockfree_total_impl< T >::size(){
     }
     return count;
 }
-template< class T >
-bool list_lockfree_total_impl< T >::add( T const & val, size_t key ){
+template< class T, trait_reclamation reclam >
+bool list_lockfree_total_impl< T, reclam >::add( T const & val, size_t key ){
     while( true ){
-	find_result window = list_lockfree_total_impl< T >::find_window( _head, key );
+	find_result window = list_lockfree_total_impl< T, reclam >::find_window( _head, key );
 	Node * curr = window.second;
 	if( curr && curr->_key == key ){
 	    return false;
@@ -62,10 +62,10 @@ bool list_lockfree_total_impl< T >::add( T const & val, size_t key ){
 	}
     }
 }
-template< class T >
-bool list_lockfree_total_impl< T >::remove( T & val, size_t key ){
+template< class T, trait_reclamation reclam >
+bool list_lockfree_total_impl< T, reclam >::remove( T & val, size_t key ){
     while( true ){
-	find_result window = list_lockfree_total_impl< T >::find_window( _head, key );
+	find_result window = list_lockfree_total_impl< T, reclam >::find_window( _head, key );
 	Node * curr = window.second;
 	Node * prev = window.first;
 	if( curr && curr->_key != key ){
@@ -85,8 +85,8 @@ bool list_lockfree_total_impl< T >::remove( T & val, size_t key ){
 	}
     }
 }
-template< class T >
-bool list_lockfree_total_impl< T >::contains( T const & val, size_t key ){
+template< class T, trait_reclamation reclam >
+bool list_lockfree_total_impl< T, reclam >::contains( T const & val, size_t key ){
     Node * h = _head.load( std::memory_order_acquire );
     Node * n = h->_next.load( std::memory_order_acquire );
     while( n ){
@@ -100,8 +100,8 @@ bool list_lockfree_total_impl< T >::contains( T const & val, size_t key ){
     }
     return false;
 }
-template< class T >
-typename list_lockfree_total_impl< T>::find_result list_lockfree_total_impl< T >::find_window( _t_node & head, size_t key ){
+template< class T, trait_reclamation reclam >
+typename list_lockfree_total_impl< T, reclam >::find_result list_lockfree_total_impl< T, reclam >::find_window( _t_node & head, size_t key ){
     while( true ){
 	Node * h = _head.load( std::memory_order_acquire );
 	Node * n_prev = h;

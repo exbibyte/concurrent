@@ -21,7 +21,7 @@ public:
 	//std::function< ResultType() > _fun;
 	// ResultType _result;
 	_fun = std::function<void()>([=]()->ResultType {
-		ResultType result = f( args... );
+		ResultType result = f( args... ); //ignore result
 		return;
 	    });
     }

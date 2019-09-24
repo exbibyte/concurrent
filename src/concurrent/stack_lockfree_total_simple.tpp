@@ -1,9 +1,9 @@
-template< typename T >
-stack_lockfree_total_simple_impl<T>::stack_lockfree_total_simple_impl(){
+template< typename T, trait_reclamation reclam >
+stack_lockfree_total_simple_impl<T, reclam>::stack_lockfree_total_simple_impl(){
     _head.store( nullptr );
 }
-template< typename T >
-stack_lockfree_total_simple_impl<T>::~stack_lockfree_total_simple_impl(){
+template< typename T, trait_reclamation reclam >
+stack_lockfree_total_simple_impl<T, reclam>::~stack_lockfree_total_simple_impl(){
     clear();
     if( _head ){
 	Node * n = _head.load();
@@ -13,16 +13,16 @@ stack_lockfree_total_simple_impl<T>::~stack_lockfree_total_simple_impl(){
 	}
     }
 }
-template< class T >
-bool stack_lockfree_total_simple_impl<T>::push( T const & val ){
+template< typename T, trait_reclamation reclam >
+bool stack_lockfree_total_simple_impl<T, reclam>::push( T const & val ){
     Node * new_node = new Node( val );
     Node * head = _head.load( std::memory_order_relaxed );
     new_node->_next = head;
     while( !_head.compare_exchange_weak( new_node->_next, new_node, std::memory_order_release ) );
     return true;
 }
-template< class T >
-bool stack_lockfree_total_simple_impl<T>::pop( T & val ){
+template< typename T, trait_reclamation reclam >
+bool stack_lockfree_total_simple_impl<T, reclam>::pop( T & val ){
     Node * head = _head.load( std::memory_order_relaxed );
     while( head && !_head.compare_exchange_weak( head, head->_next, std::memory_order_acquire ) );
     if( !head )
@@ -31,8 +31,8 @@ bool stack_lockfree_total_simple_impl<T>::pop( T & val ){
     delete head;
     return true;
 }
-template< class T >
-size_t stack_lockfree_total_simple_impl<T>::size() const {
+template< typename T, trait_reclamation reclam >
+size_t stack_lockfree_total_simple_impl<T, reclam>::size() const {
     Node * current_node = _head.load( std::memory_order_relaxed );
     size_t count = 0;
     while( current_node ){
@@ -41,12 +41,12 @@ size_t stack_lockfree_total_simple_impl<T>::size() const {
     }
     return count;
 }
-template< typename T >
-bool stack_lockfree_total_simple_impl<T>::empty() const {
+template< typename T, trait_reclamation reclam >
+bool stack_lockfree_total_simple_impl<T, reclam>::empty() const {
     return size() == 0;
 }
-template< typename T >
-bool stack_lockfree_total_simple_impl<T>::clear(){
+template< typename T, trait_reclamation reclam >
+bool stack_lockfree_total_simple_impl<T, reclam>::clear(){
     while( !empty() ){
 	T t;
 	pop( t );

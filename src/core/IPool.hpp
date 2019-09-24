@@ -1,63 +1,45 @@
-#ifndef IPOOL_H
-#define IPOOL_H
+#ifndef IPOOL_HPP
+#define IPOOL_HPP
 
 #include <utility>
 #include <functional>
+#include <type_traits>
 
-class trait_pool_concurrency {
-public:
-    class none{};
-    class global{};
-    class granular{};
-    class lockfree{};
-    class waitfree{};
-};
+#include "IReclamation.hpp"
+#include "IConcurrency.hpp"
+#include "ISize.hpp"
 
-class trait_pool_size {
+template< class T, template< class, trait_reclamation > class ContainerType, trait_size pool_size_, trait_concurrency pool_concurrency_, trait_method pool_method_, trait_fairness pool_fairness_, trait_reclamation reclam >
+class IPool final : public ContainerType<T, reclam> {
 public:
-    class bounded{};
-    class unbounded{};
-};
-
-class trait_pool_method {
-public:
-    class total{};
-    class partial{};
-    class synchronous{};
-};
-
-class trait_pool_fairness {
-public:
-    class fifo{};
-    class lifo{};
-};
-
-template< class T, template< class > class ContainerType, class PoolSize, class PoolConcurrency, class PoolMethod, class PoolFairness >
-class IPool final : public ContainerType<T> {
-public:
+    
         //container and value traits
-        using container_type =     ContainerType<T>;
+        using container_type =     ContainerType<T, reclam>;
 	using value_type =         T;
 	using reference =          T &;
 	using const_reference =    T const &;
-	using size_type =          typename ContainerType<T>::_t_size;
+	using size_type =          typename container_type::_t_size;
 
         //pool traits
-        using pool_size =          PoolSize;
-	using pool_concurrency =   PoolConcurrency;
-	using pool_method =        PoolMethod;
-        using pool_fairness =      PoolFairness;
+        constexpr static trait_size pool_size = pool_size_;
+        constexpr static trait_concurrency pool_concurrency = pool_concurrency_;
+        constexpr static trait_method pool_method = pool_method_;
+        constexpr static trait_fairness pool_fairness = pool_fairness_;
+        constexpr static trait_reclamation pool_reclamation = reclam;
 
               template< class... Args >
-              IPool( Args... args ) : ContainerType<T>( std::forward<Args>(args)... ) {}
+              IPool( Args... args ) : container_type( std::forward<Args>(args)... ) {}
               ~IPool(){}
     
-         bool clear(){ return ContainerType<T>::clear(); }
-         bool empty(){ return ContainerType<T>::empty(); }
-    size_type size(){ return ContainerType<T>::size(); }
-         bool put( const_reference item ){ return ContainerType<T>::put( item ); }
-         bool get( reference item ){ return ContainerType<T>::get( item ); }
-         void get_fun( std::function<void(bool,reference)> f ){
+         bool clear(){ return container_type::clear(); }
+         bool empty(){ return container_type::empty(); }
+    size_type size(){ return container_type::size(); }
+         bool put( const_reference item ){ return container_type::put( item ); }
+         bool put_with( std::function<value_type()> f ){
+	     return put( f() );
+	 }
+         bool get( reference item ){ return container_type::get( item ); }
+         void get_with( std::function<void(bool,reference)> f ){
 	     value_type val;
 	     bool ret = get( val );
 	     f( ret, val );

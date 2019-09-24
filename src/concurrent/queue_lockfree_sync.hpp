@@ -1,13 +1,15 @@
 //--unbounded lock free synchronous queue via dual structures
 //---based on Art of Multiprocessor Programming section 10.7
-#ifndef QUEUE_LF_SYNC_H
-#define QUEUE_LF_SYNC_H
+#ifndef QUEUE_LF_SYNC_HPP
+#define QUEUE_LF_SYNC_HPP
 
 #include <atomic>
 #include "IPool.hpp"
 
+//todo: specialize for memory reclamation strategies
+
 //A value of type T that a node holds is assumed to be default constructable
-template< class T >
+template< class T, trait_reclamation reclam >
 class queue_lockfree_sync_impl {
 public:
     using _t_size = size_t;
@@ -53,12 +55,13 @@ private:
 
 #include "queue_lockfree_sync.tpp"
 
-template< class T >
+template< class T, trait_reclamation reclam >
 using queue_lockfree_sync = IPool< T, queue_lockfree_sync_impl,
-				   trait_pool_size::unbounded,
-				   trait_pool_concurrency::lockfree,
-				   trait_pool_method::synchronous,
-				   trait_pool_fairness::fifo>;
+				   trait_size::unbounded,
+				   trait_concurrency::lockfree,
+				   trait_method::synchronous,
+				   trait_fairness::fifo,
+				   reclam >;
 
 #endif
 

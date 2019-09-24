@@ -13,10 +13,10 @@
 using namespace std;
 
 TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) { 
-
+    
     SECTION( "push-pop" ) {
     
-	queue_lockfree_total<int> queue;
+	queue_lockfree_total<int, trait_reclamation::hp> queue;
             
 	size_t count = queue.size();
 	CHECK( 0 == count );
@@ -32,11 +32,11 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
 	CHECK( true == bRet );
 	CHECK( 5 == retrieve );
 	
-	queue_lockfree_total<int>::thread_deinit();
+	queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
     }
     SECTION( "pop_empty" ) {
     
-	queue_lockfree_total<int> queue;
+	queue_lockfree_total<int, trait_reclamation::hp> queue;
         
 	int retrieve;
 	size_t count;
@@ -45,11 +45,11 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
 	CHECK( 0 == count );
 	CHECK( false == bRet );
 	
-	queue_lockfree_total<int>::thread_deinit();
+	queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
     }
     SECTION( "multiple instances" ) {
     
-	queue_lockfree_total<int> q1,q2;
+	queue_lockfree_total<int, trait_reclamation::hp> q1,q2;
             
 	CHECK( 0 == q1.size() );
 	CHECK( 0 == q2.size() );
@@ -74,7 +74,7 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
 	CHECK( 0 == q1.size() );
 	CHECK( 0 == q2.size() );
     
-	queue_lockfree_total<int>::thread_deinit();
+	queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
     }
 }
 
@@ -82,7 +82,7 @@ TEST_CASE( "queue_lockfree_total_multithread", "[queue multithread]" ) {
         
     SECTION( "multi-thread push-pop" ) {
 
-	queue_lockfree_total<int> queue;
+	queue_lockfree_total<int, trait_reclamation::hp> queue;
 
 	int count_loop = 10;
 	while( --count_loop >=0 ){
@@ -93,7 +93,7 @@ TEST_CASE( "queue_lockfree_total_multithread", "[queue multithread]" ) {
 		threads[i] = std::thread( [ &, i ](){
 			int val = i;
 			queue.put( val );
-			queue_lockfree_total<int>::thread_deinit();
+			queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
 		    } );
 	    }
 	    // count = queue.size();
@@ -108,7 +108,7 @@ TEST_CASE( "queue_lockfree_total_multithread", "[queue multithread]" ) {
 			if( bRet ){
 			    // std::cout << pop_val << std::endl;
 			}
-			queue_lockfree_total<int>::thread_deinit();
+			queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
 		    } );
 	    }
 	    for( int i = 0; i < num_threads * 0.1; ++i ){
@@ -129,7 +129,7 @@ TEST_CASE( "queue_lockfree_total_multithread", "[queue multithread]" ) {
 			if( bRet ){
 			    // std::cout << pop_val << std::endl;
 			}
-			queue_lockfree_total<int>::thread_deinit();
+			queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
 		    } );
 	    }
 	    for( int i = 0; i < num_threads * 0.9; ++i ){
@@ -140,13 +140,13 @@ TEST_CASE( "queue_lockfree_total_multithread", "[queue multithread]" ) {
 	    CHECK( 0 <= count );
 	    CHECK( (num_threads * 0.1 ) >= count );
 	}
-	queue_lockfree_total<int>::thread_deinit();
+	queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
     }
 }
 
 TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread longlived]" ) { 
 	
-    queue_lockfree_total<int> queue;
+    queue_lockfree_total<int, trait_reclamation::hp> queue;
 
     size_t nums = 1000000;
     
@@ -163,7 +163,7 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
 		for( int j = 0; j < nums/num_threads; ++j ){
 		    while( !queue.put( val + j ) ){} //force enqueue
 		}
-		queue_lockfree_total<int>::thread_deinit();
+		queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
 	    } );
     }
 
@@ -175,7 +175,7 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
 		    while( !queue.get( pop_val ) ){} //force dequeue
 		    ++retrieved[pop_val];
 		}
-		queue_lockfree_total<int>::thread_deinit();
+		queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
 	    } );
     }
   
