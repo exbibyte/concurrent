@@ -1,3 +1,10 @@
+DEBUG ?= 1
+ifeq ($(DEBUG), 1)
+    FLAGS=-g
+else
+    FLAGS=-O3
+endif
+
 #source files---
 
 src_files = $(wildcard *.cpp)
@@ -21,7 +28,7 @@ dir_intermediate := ./intermediate
 $(shell mkdir -p $(dir_intermediate))
 
 %.o: %.cpp
-	$(CXX) -g -std=c++17 -c -o $(dir_intermediate)/$@ $< $(include_flags)
+	$(CXX) $(FLAGS) -std=c++1z -c -o $(dir_intermediate)/$@ $< $(include_flags)
 
 .PHONY: all
 

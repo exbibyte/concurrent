@@ -1,3 +1,9 @@
+DEBUG ?= 1
+ifeq ($(DEBUG), 1)
+    FLAGS=-g
+else
+    FLAGS=-O3
+endif
 #include directories start---
 inc_folder_basic := $(dir $(wildcard ../../src/*/))
 inc_folder_test := ../
@@ -24,7 +30,7 @@ targets := $(patsubst %.cpp, %, $(wildcard *.cpp))
 libs := -pthread
 
 %: %.cpp
-	$(CXX) -g -std=c++14 -o $(dir_build)/$@ $^ $(object_files) $(include_flags) $(libs)
+	$(CXX) $(FLAGS) -std=c++1z -o $(dir_build)/$@ $^ $(object_files) $(include_flags) $(libs)
 
 build_memory:
 	$(MAKE) -C ./../../src/memory all

@@ -37,5 +37,6 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
   - lockfree queue
     - queue_lockfree_total with hazard pointer
 
-# language
-  - currently moving from C++11 to C++14/17 for some features
+# other notes
+  - currently uses C++1z
+  - release build: make DEBUG=0 all

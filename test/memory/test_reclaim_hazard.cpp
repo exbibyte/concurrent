@@ -35,7 +35,7 @@ TEST_CASE( "hazard pointer", "[hazard]" ) {
   
     auto f = [&temp,numthread,nums](int id){
 
-	assert(nullptr == reclaim_hazard<Data>::new_from_recycled());
+	CHECK(nullptr == reclaim_hazard<Data>::new_from_recycled());
 
 	int offset = nums/numthread*id;
 	for(int j = 0; j < nums/numthread/20; ++j){
@@ -62,7 +62,7 @@ TEST_CASE( "hazard pointer", "[hazard]" ) {
 	    hazard_guard<Data> g20 = reclaim_hazard<Data>::add_hazard(temp[offset+j*20+19]);
 	}
 
-	assert(nullptr == reclaim_hazard<Data>::new_from_recycled());
+	CHECK(nullptr == reclaim_hazard<Data>::new_from_recycled());
 
 	bool is_there_recycled = false;
 	for(int j = nums/numthread*id; j < nums/numthread*id+nums/numthread; ++j){
@@ -79,7 +79,7 @@ TEST_CASE( "hazard pointer", "[hazard]" ) {
 	    }
 	}
 
-	assert( is_there_recycled );
+	CHECK( is_there_recycled );
     
 	//thread cleanup
 	reclaim_hazard<Data>::thread_deinit();
@@ -120,7 +120,7 @@ TEST_CASE( "hazard pointer stress", "[hazard]" ) {
 
 	int recycled = 0;
 	
-	assert(nullptr == reclaim_hazard<Data>::new_from_recycled());
+	CHECK(nullptr == reclaim_hazard<Data>::new_from_recycled());
 	for(int i = 0; i < nums; ++i ){
 
 	    int c = dis(gen);
