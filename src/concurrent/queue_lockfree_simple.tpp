@@ -74,7 +74,7 @@ bool queue_lockfree_simple_impl<T>::pop_front( Node * & node ){ //obtain item fr
                 if( _head.compare_exchange_weak( head, head_next, std::memory_order_relaxed ) ){
                     //head can be removed now
                     node = head;
-                    node->_val = v; //return value
+                    node->_val = std::move(v); //return value
                     return true;
                 }
             }

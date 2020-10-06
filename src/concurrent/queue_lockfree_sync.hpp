@@ -18,13 +18,15 @@ public:
     using _t_node = std::atomic< Node * >;
     enum class NodeType;
     using _t_node_type = std::atomic< NodeType >;
+    using maybe = std::optional<T>;
+
               enum class NodeType{
                   SENTINEL,
                   ITEM,
                   RESERVATION,
-		  BUSY,
-		  FULFILLED,
-		  COMPLETE,    
+                  BUSY,
+                  FULFILLED,
+                  COMPLETE,
               };
               class Node {
               public:
@@ -32,11 +34,14 @@ public:
 		      _t_val _val; //container value storage
 		_t_node_type _type; //node type( ITEM: enquing thread waiting for synchronization, RESERVATION: dequing thread waiting for synchronization )
 		             Node(): _next( nullptr ) {
-				 _type.store( NodeType::RESERVATION );
-                             }
-                             Node( _t_val const & val ): _val( val ), _next( nullptr ){
-				 _type.store( NodeType::ITEM );
-                             }
+                         _type.store( NodeType::RESERVATION );
+                     }
+                     Node( _t_val const & val ): _val( val ), _next( nullptr ){
+                         _type.store( NodeType::ITEM );
+                     }
+                     Node( _t_val && val ): _val( val ), _next( nullptr ){
+                         _type.store( NodeType::ITEM );
+                     }
               };
 
                queue_lockfree_sync_impl();
@@ -45,10 +50,13 @@ public:
           bool empty();
        _t_size size();                                                 //approximate count of the container size
           bool put( _t_val const & val ){ return push_back( val ); }
-          bool get( _t_val & val ){ return pop_front( val ); }
+          bool put( _t_val && val ){ return push_back( val ); }
+         maybe get(){ return pop_front(); }
 private:
           bool push_back( _t_val const & val );
-          bool pop_front( _t_val & val );
+          bool push_back( _t_val && val );
+          bool push_back_aux( Node * );
+         maybe pop_front();
        _t_node _head;
        _t_node _tail;
 };

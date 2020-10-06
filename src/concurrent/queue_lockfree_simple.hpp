@@ -14,6 +14,9 @@
 template< class T >
 class queue_lockfree_simple_impl {
 public:
+
+    static_assert(std::is_move_constructible<T>::value);
+    
     using _t_size = size_t;
     using _t_val = T;
     class Node;
@@ -25,6 +28,7 @@ public:
                       _t_val _val;
 		             Node(): _next( nullptr ) {}
 		             Node( _t_val const & val ): _val(val), _next( nullptr ) {}
+                     Node( _t_val && val ): _val(val), _next( nullptr ) {}
 	      };
 
                queue_lockfree_simple_impl();

@@ -11,9 +11,10 @@
 template< class T, trait_reclamation reclam >
 class queue_lockfree_total_impl {
 public:
+
     using _t_size = size_t;
     using _t_val = T;
-
+    using maybe = std::optional<_t_val>;
                queue_lockfree_total_impl(){
 		   assert(false && "unsupported reclamation strategy");
 	       }
@@ -22,8 +23,9 @@ public:
           bool clear(){return true;}
           bool empty(){return true;}
        _t_size size(){ return 0; }
+          bool put( _t_val && val ){ return false; }
           bool put( _t_val const & val ){ return false; }
-          bool get( _t_val & val ){ return false; }
+         maybe get(){ return std::nullopt; }
 };
 
 //specializations for different memory reclamations:
