@@ -13,6 +13,7 @@ public:
     using _t_val = T;
     class Node;
     using _t_node = std::atomic< Node * >;
+    using maybe = std::optional<T>;
 
               class Node {
               public:
@@ -20,6 +21,7 @@ public:
                      Node * _next;
                             Node(): _next( nullptr ) {}
                             Node( T const & val ) : _val( val ), _next( nullptr ) {}
+                            Node( T && val ) : _val( val ), _next( nullptr ) {}
               };
               stack_lockfree_partial_elim_impl();
               ~stack_lockfree_partial_elim_impl();
@@ -30,7 +32,9 @@ public:
          bool get( T & val ){ return pop( val ); }
 private:
          bool push( T const & val );
-         bool pop( T & val );
+         bool push( T && val );
+         bool push_aux( Node * );
+        maybe pop();
       _t_node _head;
 };
 

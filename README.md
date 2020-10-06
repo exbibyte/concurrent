@@ -1,7 +1,5 @@
 # concurrent
-practicing shared memory concurrency in C++
-
-Relocated some chunks of code from one of my previous repository. These mainly contain code that is related to concurrency and shared memory multi-threading.
+multithreaded programming in C++
 
 They are based on references such as: C++ Concurrency in Action, Art of Multiprocessor Programming, Hands-On Concurrency with Rust.
   

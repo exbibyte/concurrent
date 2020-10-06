@@ -16,73 +16,70 @@ TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) {
     stack_lockfree_total_simple<int, trait_reclamation::not_applicable> stack;
 
     SECTION( "put" ) {
-	size_t count = stack.size();
-	CHECK( 0 == count );
-	int num = 5;
-	stack.put(num);
-	count = stack.size();
-	CHECK( 1 == count );
+        size_t count = stack.size();
+        CHECK( 0 == count );
+        int num = 5;
+        stack.put(num);
+        count = stack.size();
+        CHECK( 1 == count );
 
-	SECTION( "get" ) {
-	    int retrieve;
-	    bool bRet = stack.get( retrieve );
-	    count = stack.size();
-	    CHECK( 0 == count );
-	    CHECK( true == bRet );
-	    CHECK( 5 == retrieve );
-	}
+        SECTION( "get" ) {
+            auto ret = stack.get();
+            count = stack.size();
+            CHECK( 0 == count );
+            CHECK( ret );
+            CHECK( 5 == *ret );
+        }
     }    
 
     SECTION( "get empty" ) {
-	int retrieve;
-	size_t count;
-	bool bRet = stack.get( retrieve );
-	count = stack.size();
-	CHECK( 0 == count );
-	CHECK( false == bRet );
+        size_t count;
+        auto ret = stack.get();
+        count = stack.size();
+        CHECK( 0 == count );
+        CHECK( !ret );
     }
 
     SECTION( "multi-thread put" ) {
-	size_t count;
-	unsigned int num_threads = 10;
-	vector<thread> threads( num_threads );
-	for( int i = 0; i < num_threads; ++i ){
-	    threads[i] = std::thread( [ &stack, i ](){
-		    int num = i;
-		    stack.put( num );
-		} );
-	}
-	for( auto & i : threads ){
-	    i.join();
-	}
-	count = stack.size();
-	CHECK( num_threads == count );
+        size_t count;
+        unsigned int num_threads = 10;
+        vector<thread> threads( num_threads );
+        for( int i = 0; i < num_threads; ++i ){
+            threads[i] = std::thread( [ &stack, i ](){
+                    int num = i;
+                    stack.put( num );
+                } );
+        }
+        for( auto & i : threads ){
+            i.join();
+        }
+        count = stack.size();
+        CHECK( num_threads == count );
 
-	SECTION( "multi-thread get" ) {
-	    set<int> vals_retrieve;
-	    mutex mtx;
-	    for( auto & i : threads ){
-		i = std::thread( [&](){
-			int get_val;
-			bool bRet = stack.get( get_val );
-			mtx.lock();
-			if( bRet ){
-			    vals_retrieve.insert( get_val );
-			}
-			mtx.unlock();
-		    } );
-	    }
-	    for( auto & i : threads ){
-		i.join();
-	    }
-	    count = stack.size();
-	    CHECK( 0 == count );
-	    for( int i = 0; i < num_threads; ++i ){
-		auto it = vals_retrieve.find(i);
-		CHECK( vals_retrieve.end() != it );
-		if( vals_retrieve.end() != it )
-		    vals_retrieve.erase(it);
-	    }
-	}
+        SECTION( "multi-thread get" ) {
+            set<int> vals_retrieve;
+            mutex mtx;
+            for( auto & i : threads ){
+                i = std::thread( [&](){
+                        auto ret = stack.get();
+                        mtx.lock();
+                        if( ret ){
+                            vals_retrieve.insert( *ret );
+                        }
+                        mtx.unlock();
+                    } );
+            }
+            for( auto & i : threads ){
+                i.join();
+            }
+            count = stack.size();
+            CHECK( 0 == count );
+            for( int i = 0; i < num_threads; ++i ){
+                auto it = vals_retrieve.find(i);
+                CHECK( vals_retrieve.end() != it );
+                if( vals_retrieve.end() != it )
+                    vals_retrieve.erase(it);
+            }
+        }
     }
 }
