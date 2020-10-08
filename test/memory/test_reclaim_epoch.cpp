@@ -9,6 +9,7 @@
 #include <random>
 #include <iostream>
 #include <random>
+#include <condition_variable>
 
 #include "reclaim_epoch.hpp"
 
@@ -18,92 +19,138 @@ struct Data {
     uint64_t p;
     uint64_t q;
     Data(){
-	p = 0;
-	q = 0;
+        p = 0;
+        q = 0;
     }
 };
 
 TEST_CASE( "epoch reclamation", "[epoch]" ) {
 
-    std::vector<std::atomic<Data*>> arr_data(100);
+    constexpr int num_data = 2;
+    std::vector<std::atomic<Data*>> arr_data(num_data);
     
-    for(int i=0;i<100;++i){
-	auto d = new Data();
-	d->p = i;
-	arr_data[i].store( d );
+    for(int i=0;i<num_data;++i){
+        auto d = new Data();
+        d->p = i;
+        arr_data[i].store( d );
     }
     
-    constexpr int numthread = 4;
-    
+    int numthread = std::thread::hardware_concurrency();
+
     std::vector<std::thread> th;    
 
     std::mutex mtx_write;
 
-    std::default_random_engine gen;
-	
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine gen(seed);
+
+    int sync_count = 0;
+
+    std::mutex m_sync;
+    std::condition_variable cv;
+
+    std::map<int, int> removed_count;
+    
     auto f = [&](int id){
-	reclaim_epoch<Data, numthread>::register_thread();
 
-	std::uniform_int_distribution<int> distrib(0,3);
-	std::uniform_int_distribution<int> distrib_arr(0,99);
-	
-	int count_read = 0;
-	int count_removed = 0;
-	
-	std::vector<int> read;
-	
-	for(int i=0;i<300;++i){
+        reclaim_epoch<Data>::register_thread();
 
-	    int num = distrib(gen);
-	    int arr_idx = distrib_arr(gen);
-	    
-	    if(num<3){
-		
-	    	auto guard = reclaim_epoch<Data, numthread>::read_guard();
-	    	Data * ptr = arr_data[arr_idx].load(std::memory_order_relaxed);
-	    	if(ptr){
-	    	    auto val = ptr->p;
-	    	    read.push_back(val);
-	    	    ++count_read;
-	    	}
-	    }else{
-	    	Data * ptr = arr_data[arr_idx].load(std::memory_order_relaxed);
-	    	if(ptr){
-		    //remove visibility of ptr from data array
-		    if( arr_data[arr_idx].compare_exchange_strong( ptr, nullptr ) ){
-			reclaim_epoch<Data, numthread>::retire(ptr); //defer memory reclamation
-			++count_removed;
-		    }
-	    	}
-	    }
-	}
+        {
+            std::scoped_lock<std::mutex> lock(m_sync);
+            ++sync_count;
+            cv.notify_all();
+        }
+        
+        {
+            std::unique_lock<std::mutex> lock(m_sync);
+            cv.wait(lock, [&](){return sync_count>=numthread;});
+        }
+        
+        std::uniform_int_distribution<int> distrib(0,3);
+        std::uniform_int_distribution<int> distrib_arr(0,num_data-1);
+    
+        int count_read = 0;
+        int count_removed = 0;
+    
+        std::vector<int> read;
+        std::vector<int> removed;
 
-	{
-	    std::lock_guard<std::mutex> lock(mtx_write);
-	    std::cout << "count_read: " << count_read << ", count removed: " << count_removed << std::endl;
-	    reclaim_epoch<Data, numthread>::deinit_thread();
-	    reclaim_epoch<Data, numthread>::stat();
-	}
+        int chunk = num_data * 800000;
+        for(int i=0;i<chunk;++i){
+
+            int num = distrib(gen);
+            int arr_idx = distrib_arr(gen);
+
+            auto guard = reclaim_epoch<Data>::critical_section();
+
+            if(num<=1){
+                Data * ptr = arr_data[arr_idx].load(std::memory_order_acquire);
+                if(ptr){
+                    auto val = ptr->p;
+                    read.push_back(val);
+                    ++count_read;
+                }
+            }else{
+                auto d_new = new Data();
+                d_new->p = num_data + id * chunk + i;
+                
+                Data * ptr = arr_data[arr_idx].load(std::memory_order_relaxed);
+                if(ptr && arr_data[arr_idx].compare_exchange_strong(ptr, d_new)){
+                    removed.push_back(ptr->p);
+                    reclaim_epoch<Data>::retire(ptr);
+                    ++count_removed;
+                }else{
+                    delete d_new;
+                }
+            }
+        }
+        
+        {
+            std::scoped_lock<std::mutex> lock(m_sync);
+            ++sync_count;
+            cv.notify_all();
+        }
+        
+        {
+            std::unique_lock<std::mutex> lock(m_sync);
+            cv.wait(lock, [&](){return sync_count==numthread*2;});
+        }
+        
+        {
+            std::lock_guard<std::mutex> lock(mtx_write);
+            std::cout << "count_read: " << count_read << ", count removed: " << count_removed << std::endl;
+        }
+
+        {
+            std::scoped_lock<std::mutex> lock(m_sync);
+            reclaim_epoch<Data>::stat();
+            for(auto i:removed){
+                removed_count[i]++;
+            }
+        }
+
+        reclaim_epoch<Data>::deinit_thread();
     };
     
     for( int i = 0; i < numthread; ++i ){
-	th.push_back( std::thread(f, i) );
+        th.push_back( std::thread(f, i) );
     }
     
     for( auto & i: th ){
-	i.join();
+        i.join();
     }
-    
-    reclaim_epoch<Data, numthread>::drain_final();
-    reclaim_epoch<Data, numthread>::stat();
-	    
-    int count_final_recycled = 0;
+        
+    int count_remain = 0;
     for(auto &i: arr_data){
-	auto d = i.load();
-	if(d){
-	    ++count_final_recycled;
-	    delete d;
-	}
+        auto d = i.load();
+        if(d){
+            ++count_remain;
+            delete d;
+        }
     }
-    std::cout << "count final recycled: " << count_final_recycled << std::endl;
+    std::cout << "count final remain: " << count_remain << std::endl;
+    for(auto [key,count]: removed_count){
+        if(count!=1) std::cout <<"count: " << count << std::endl;
+        assert(count==1);
+    }
 }

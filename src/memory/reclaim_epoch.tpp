@@ -1,159 +1,134 @@
-template<class T, unsigned int N>
-std::atomic<uint8_t> reclaim_epoch<T, N>::global_epoch(0);
+#include <iostream>
 
-template<class T, unsigned int N>
-thread_local uint64_t reclaim_epoch<T, N>::local_ticker = 0;
+template<class T>
+thread_local std::atomic<uint64_t> reclaim_epoch<T>::epoch_local{std::numeric_limits<uint64_t>::max()};
 
-template<class T, unsigned int N>
-std::atomic<uint8_t> reclaim_epoch<T, N>::local_epochs[N] = {};
+template<class T>
+std::atomic<uint64_t> reclaim_epoch<T>::freq_epoch{0};
 
-template<class T, unsigned int N>
-queue_lockfree_simple<T*> reclaim_epoch<T, N>::epoch_garbage[3];
+template<class T>
+thread_local int reclaim_epoch<T>::local_freq_recycle{0};
 
-template<class T, unsigned int N>
-thread_local uint8_t reclaim_epoch<T, N>::id;
+template<class T>
+thread_local std::vector<std::pair<T*,uint64_t>> reclaim_epoch<T>::local_recycle {};
 
-template<class T, unsigned int N>
-thread_local size_t reclaim_epoch<T, N>::idx = -1;
+template<class T>
+thread_local int reclaim_epoch<T>::count_recycled{0};
 
-template<class T, unsigned int N>
-int reclaim_epoch<T, N>::threads_register_count = 0;
+template<class T>
+std::atomic<uint64_t> reclaim_epoch<T>::epoch_global{0};
 
-template<class T, unsigned int N>
-std::atomic<bool> reclaim_epoch<T, N>::flags_critical[N] = {};
+template<class T>
+queue_lockfree_simple<std::atomic<uint64_t>*> reclaim_epoch<T>::epoch_list;
 
-template<class T, unsigned int N>
-std::mutex reclaim_epoch<T, N>::mutex_thread_ids;
-
-template<class T, unsigned int N>
-std::unordered_map<size_t,size_t> reclaim_epoch<T, N>::thread_ids;
-
-template<class T, unsigned int N>
-thread_local size_t reclaim_epoch<T, N>::count_recycled = 0;
-
-template<class T, unsigned int N>
-thread_local std::vector<typename queue_lockfree_simple<T*>::Node*> reclaim_epoch<T, N>::local_nodes;
-
-template<class T, unsigned int N>
-epoch_guard<T,N> reclaim_epoch<T, N>::read_guard(){
-	
-    local_epochs[reclaim_epoch<T, N>::idx] = global_epoch.load(std::memory_order_seq_cst);
-	
-    if( ++local_ticker > ticker_thresh ){
-	local_ticker = 0;
-	collect_garbage();
-    }
-	
-    return epoch_guard<T,N>( flags_critical[idx] );
-}
-
-template<class T, unsigned int N>
-void reclaim_epoch<T, N>::collect_garbage(){
+template<class T>
+void reclaim_epoch<T>::retire(T * resource){
     
-    bool equal = true;
-
-    uint8_t current_epoch = global_epoch.load(std::memory_order_seq_cst);
-	
-    for(int i = 0; i < N; ++i){
-	equal &= (local_epochs[i] == current_epoch) && (false == flags_critical[i]);
-    }
-	
-    uint8_t next_epoch = (current_epoch+1)%3;
-    uint8_t prev_epoch = (current_epoch+3-1)%3;
+    auto e = epoch_global.load();
     
-    if(equal && global_epoch.compare_exchange_strong(current_epoch, next_epoch) ){
+    epoch_local.store(e);
 
-	typename queue_lockfree_simple<T*>::Node * n;
-	while( epoch_garbage[prev_epoch].pop_front( n ) ){
-	    if(n->_val != nullptr){
-		++count_recycled;
-		delete n->_val;
-	    }
-	    assert(n != nullptr);
-	    n->_val = nullptr;
-	    n->_next = nullptr;
-	    local_nodes.push_back(n);
-	    
-	    if( local_nodes.size() > local_node_thresh ){
-		// delete n;
-		auto it = local_nodes.begin()+local_nodes.size()/2;
-		for(auto it_a = local_nodes.begin(); it_a != it; ++it_a){
-		    delete *it_a;
-		}
-		auto temp = std::vector<typename queue_lockfree_simple<T*>::Node*>(it, local_nodes.end());
-		std::swap(temp,local_nodes);
-	    }
-	}
-    }    
+    local_recycle.push_back({resource, e});
+
+    if(freq_epoch.fetch_add(1) % FREQ_EPOCH == 0){
+        epoch_global.fetch_add(1);
+    }
+
+    if(++local_freq_recycle >= FREQ_RECYCLE){
+        local_freq_recycle = 0;
+        recycle();
+    }
 }
 
-template<class T, unsigned int N>
-void reclaim_epoch<T, N>::retire( T * obj ){
+template<class T>
+typename reclaim_epoch<T>::epoch_guard reclaim_epoch<T>::critical_section(){    
+    uint8_t e = epoch_global.load();
+    epoch_local.store(e);
+    return epoch_guard( &epoch_local );
+}
 
-    local_epochs[reclaim_epoch<T, N>::id] = global_epoch.load(std::memory_order_seq_cst);
+template<class T>
+void reclaim_epoch<T>::recycle(){
     
-    if( ++local_ticker > ticker_thresh ){
-	local_ticker = 0;
-	collect_garbage();
+    //check other threads' epochs and attempt reycle
+    uint64_t low = std::numeric_limits<uint64_t>::max();
+
+    auto fn = [&](queue_lockfree_simple<std::atomic<uint64_t>*>::Node * i){
+        auto v = i->_val->load();
+        low = std::min(low, v);
+    };
+
+    epoch_list.for_each(fn);
+        
+    std::vector<std::pair<T*, uint64_t>> temp;
+    for(auto [resource, epoch]: local_recycle){
+        if(epoch < low && resource){
+            delete resource;
+            ++count_recycled;
+        }else{
+            temp.push_back({resource,epoch});
+        }
     }
-    
-    if(obj){
-	
-	typename queue_lockfree_simple<T*>::Node * n = nullptr;
-	
-	if(local_nodes.empty()){
-	    n = new typename queue_lockfree_simple<T*>::Node(obj);
-	}else{
-	    n = local_nodes.back();
-	    n->_val = obj;
-	    local_nodes.pop_back();
-	}
-	
-	assert(n != nullptr);
-	
-	epoch_garbage[local_epochs[idx]].push_back(n);
-    }
+
+    swap(temp, local_recycle);
 }
 
-template<class T, unsigned int N>
-void reclaim_epoch<T, N>::register_thread(){
-    {
-	std::lock_guard<std::mutex> g (mutex_thread_ids);
-	idx = thread_ids.size();
-	thread_ids[(size_t)&reclaim_epoch<T, N>::id] = idx;
-	threads_register_count++;
+template<class T>
+void reclaim_epoch<T>::recycle_final(){
+
+    for(auto [resource, epoch]: local_recycle){
+        if(resource){
+            delete resource;
+        }
     }
 
-    while(threads_register_count!=N){
-	std::this_thread::yield();
-    }
+    local_recycle.clear();
 }
 
-template<class T, unsigned int N>
-void reclaim_epoch<T, N>::deinit_thread(){
-    for(auto i: local_nodes){
-	assert(i);
-	delete i;
-    }
-    local_nodes.clear();
+template<class T>
+void reclaim_epoch<T>::register_thread(){
+    using NodeType = queue_lockfree_simple<std::atomic<uint64_t>*>::Node;
+    epoch_list.push_back( new NodeType(&epoch_local) );
 }
 
-template<class T, unsigned int N>
-void reclaim_epoch<T, N>::drain_final(){
-
-    for(int i=0; i<3; ++i){
-	epoch_garbage[i].for_each(
-	    [](auto n){
-		if(n->_val) {
-		    delete n->_val;
-		    ++count_recycled;
-		}
-	    });
-    }
-    
+template<class T>
+void reclaim_epoch<T>::unregister_thread(){
+    //todo: item search and deletion from epoch_list
 }
 
-template<class T, unsigned int N>
-void reclaim_epoch<T, N>::stat(){
-    std::cout << "count recycled: " << count_recycled << std::endl;
+template<class T>
+int reclaim_epoch<T>::sync(){
+    //wait for all threads' epochs to become equal
+    while(true){
+        auto e = epoch_global.load();
+        epoch_local.store(e);
+
+        bool valid = true;
+        auto fn = [&](auto i){
+            if(i != &epoch_local){
+                auto v = i->load();
+                if(v!=std::numeric_limits<uint64_t>::max() && v!=e){
+                    valid = false;
+                }
+            }
+        };
+
+        epoch_list.for_each(fn);
+        
+        if(valid)
+            return e;
+    }
+    assert(false);
+    return -1;
+}
+
+template<class T>
+void reclaim_epoch<T>::deinit_thread(){
+    ///assumes threads have finished
+    recycle_final();
+}
+
+template<class T>
+void reclaim_epoch<T>::stat(){
+    std::cout << "recycled: " << count_recycled << ", in queue: " << local_recycle.size() << std::endl;
 }
