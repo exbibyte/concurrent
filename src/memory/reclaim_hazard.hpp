@@ -24,17 +24,11 @@ template<class T>
 class hazard_guard {
 public:
     hazard_guard( Rec<T> * );
-    hazard_guard( hazard_guard && other ){
-        hazard = other.hazard;
-        other.hazard = nullptr;
-    }
+    hazard_guard( hazard_guard && other );
     ~hazard_guard();
-
-    //not copy constructable / copy assignable
     hazard_guard() = delete;
     hazard_guard(hazard_guard const &) = delete;
     hazard_guard& operator=(hazard_guard const &) = delete;
-
 private:
     Rec<T> * hazard;
 };
@@ -80,8 +74,8 @@ private:
     static thread_local size_t count_hazards_signaled;
   
     //constants for recycling sweeps
-    static constexpr size_t num_hazards = 10; //recycles Rec's
-    static constexpr size_t capacity_freelist = 100; //recycles T's
+    static constexpr size_t num_hazards = 1000; //recycles Rec's
+    static constexpr size_t capacity_freelist = 1000; //recycles T's
 
     //free list for Records (queue_lockfree_simple<Rec<T>*>::Node)
     static queue_lockfree_simple<Rec<T>*> records_free;

@@ -1,24 +1,22 @@
-//specialization for hazard pointer reclamation
+//specialization for epoch based reclamation
 
 #include <iostream>
-#include "reclaim_hazard.hpp"
+#include "reclaim_epoch.hpp"
 
 template< typename T >
-queue_lockfree_total_impl<T, trait_reclamation::hp>::queue_lockfree_total_impl(){
+queue_lockfree_total_impl<T, trait_reclamation::epoch>::queue_lockfree_total_impl(){
     Node * sentinel = new Node();
     _head.store( sentinel );
     _tail.store( sentinel );
 }
 template< typename T >
-queue_lockfree_total_impl<T, trait_reclamation::hp>::~queue_lockfree_total_impl(){
+queue_lockfree_total_impl<T, trait_reclamation::epoch>::~queue_lockfree_total_impl(){
 
     //must ensure there are no other threads accessing the datastructure
-  
-    clear();
 
     thread_deinit();
-
-    reclaim_hazard<Node>::final_deinit();
+    
+    clear();
     
     if( _head ){
         Node * n = _head.load();
@@ -33,28 +31,36 @@ queue_lockfree_total_impl<T, trait_reclamation::hp>::~queue_lockfree_total_impl(
 }
 
 template< typename T >
-void queue_lockfree_total_impl<T, trait_reclamation::hp>::thread_deinit(){
-    reclaim_hazard<Node>::thread_deinit();
+void queue_lockfree_total_impl<T, trait_reclamation::epoch>::thread_init(){
+    ///currently requires participating threads register and wait until all threads are registered
+    reclaim_epoch<Node>::register_thread();
 }
 
 template< typename T >
-bool queue_lockfree_total_impl<T, trait_reclamation::hp>::push_back( T && val ){ //push item to the tail
+void queue_lockfree_total_impl<T, trait_reclamation::epoch>::thread_deinit(){
+    ///currently requires all participating threads to be finished with their tasks before calling this
+    reclaim_epoch<Node>::deinit_thread();
+}
+
+template< typename T >
+bool queue_lockfree_total_impl<T, trait_reclamation::epoch>::push_back( T && val ){ //push item to the tail
     Node * new_node = new Node( val );
     return push_back_aux(new_node);
 }
 
 template< typename T >
-bool queue_lockfree_total_impl<T, trait_reclamation::hp>::push_back( T const & val ){ //push item to the tail
+bool queue_lockfree_total_impl<T, trait_reclamation::epoch>::push_back( T const & val ){ //push item to the tail
     Node * new_node = new Node( val );
     return push_back_aux(new_node);
 }
 
 template< typename T >
-bool queue_lockfree_total_impl<T, trait_reclamation::hp>::push_back_aux( Node * new_node ){ //push item to the tail
+bool queue_lockfree_total_impl<T, trait_reclamation::epoch>::push_back_aux( Node * new_node ){ //push item to the tail
     while( true ){
-        Node * tail = _tail.load( std::memory_order_relaxed );
 
-        hazard_guard<Node> guard = reclaim_hazard<Node>::add_hazard( tail );
+        auto guard = reclaim_epoch<Node>::critical_section();
+        
+        Node * tail = _tail.load( std::memory_order_relaxed );
     
         if( nullptr == tail ){
             return false;
@@ -78,11 +84,12 @@ bool queue_lockfree_total_impl<T, trait_reclamation::hp>::push_back_aux( Node * 
     }
 }
 template< typename T >
-std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::hp>::pop_front(){ //obtain item from the head
+std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::epoch>::pop_front(){ //obtain item from the head
     while( true ){
-        Node * head = _head.load( std::memory_order_relaxed );
 
-        hazard_guard<Node> guard1 = reclaim_hazard<Node>::add_hazard( head );
+        auto guard = reclaim_epoch<Node>::critical_section();
+        
+        Node * head = _head.load( std::memory_order_relaxed );
     
         if( nullptr == head ){
             return std::nullopt;
@@ -96,8 +103,6 @@ std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::hp>::pop_front(
         Node * tail = _tail.load( std::memory_order_relaxed );
         
         Node * head_next = head->_next.load( std::memory_order_relaxed );
-
-        hazard_guard<Node> guard2 = reclaim_hazard<Node>::add_hazard(head_next);
     
         if(!_head.compare_exchange_weak( head, head, std::memory_order_relaxed )){
             std::this_thread::yield();
@@ -116,7 +121,7 @@ std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::hp>::pop_front(
             if( _head.compare_exchange_weak( head, head_next, std::memory_order_relaxed ) ){ //try add new item
                 //thread suceeds
                 T val(head_next->_val);
-                reclaim_hazard<Node>::retire_hazard(head);
+                reclaim_epoch<Node>::retire(head);
                 return std::optional<T>(val);
             }
         }
@@ -124,7 +129,7 @@ std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::hp>::pop_front(
 }
 
 template< typename T >
-size_t queue_lockfree_total_impl<T, trait_reclamation::hp>::size(){
+size_t queue_lockfree_total_impl<T, trait_reclamation::epoch>::size(){
     size_t count = 0;
     Node * node = _head.load();
     if( nullptr == node ){
@@ -138,11 +143,11 @@ size_t queue_lockfree_total_impl<T, trait_reclamation::hp>::size(){
     return count - 1; //discount for sentinel node
 }
 template< typename T >
-bool queue_lockfree_total_impl<T, trait_reclamation::hp>::empty(){
+bool queue_lockfree_total_impl<T, trait_reclamation::epoch>::empty(){
     return size() == 0;
 }
 template< typename T >
-bool queue_lockfree_total_impl<T, trait_reclamation::hp>::clear(){
+bool queue_lockfree_total_impl<T, trait_reclamation::epoch>::clear(){
     size_t count = 0;
     while( !empty() ){
         pop_front();

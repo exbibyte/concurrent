@@ -28,7 +28,7 @@ dir_intermediate := ./intermediate
 $(shell mkdir -p $(dir_intermediate))
 
 %.o: %.cpp
-	$(CXX) $(FLAGS) -std=c++1z -c -o $(dir_intermediate)/$@ $< $(include_flags)
+	$(CXX) $(FLAGS) -std=c++1z -c -o $(dir_intermediate)/$@ $< $(include_flags) -L/usr/local/lib -ltcmalloc
 
 .PHONY: all
 

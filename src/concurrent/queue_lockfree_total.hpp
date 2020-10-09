@@ -16,9 +16,10 @@ public:
     using _t_val = T;
     using maybe = std::optional<_t_val>;
                queue_lockfree_total_impl(){
-		   assert(false && "unsupported reclamation strategy");
-	       }
+                   assert(false && "unsupported reclamation strategy");
+               }
                ~queue_lockfree_total_impl(){}
+    static void thread_init(){}
     static void thread_deinit(){}
           bool clear(){return true;}
           bool empty(){return true;}
@@ -31,7 +32,7 @@ public:
 //specializations for different memory reclamations:
 
 #include "queue_lockfree_total_hp.hpp"
-//#include "queue_lockfree_total_epoch.hpp"
+#include "queue_lockfree_total_epoch.hpp"
 
 template< class T, trait_reclamation reclam >
 using queue_lockfree_total = IPool< T, queue_lockfree_total_impl,

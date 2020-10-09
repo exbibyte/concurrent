@@ -44,10 +44,15 @@ template<typename T>
 hazard_guard<T>::~hazard_guard(){
     //signal hazard in global record to null when guard goes out of scope
     if( this->hazard ){
-	this->hazard->val.store(nullptr);
+        this->hazard->val.store(nullptr, std::memory_order_release);
     }
 }
 
+template<typename T>
+hazard_guard<T>::hazard_guard( hazard_guard && other ){
+    hazard = other.hazard;
+    other.hazard = nullptr;
+}
 
 template<typename T>
 hazard_guard<T> reclaim_hazard<T>::add_hazard( T * t ){
@@ -58,34 +63,34 @@ hazard_guard<T> reclaim_hazard<T>::add_hazard( T * t ){
     
     if(nullptr==hazards_signaled){
 
-	while(true){
-	    if( !records_free.pop_front( n ) ){
-		//assign a new record to the thread if none exist
-		n = new Records(); //sentinel node
-		hazards_signaled = n;
-		hazards_signaled->_next.store(nullptr, std::memory_order_release);
-		hazards_signaled->_val = new Rec<T>(); //sentinel rec
-		assert( records_busy.push_back(hazards_signaled) );
-		break;
-	    }else{
-		//existing record found
-		assert( n );
-		if( nullptr != n->_val ){
-		    records_reinsert.insert(n);
-		}else{
-		    hazards_signaled = n;
-		    hazards_signaled->_next.store(nullptr, std::memory_order_release);
-		    hazards_signaled->_val = new Rec<T>(); //sentinel rec
-		    assert( records_busy.push_back(hazards_signaled) );
-		    break;
-		}
-	    }
-	}
+        while(true){
+            if( !records_free.pop_front( n ) ){
+                //assign a new record to the thread if none exist
+                n = new Records(); //sentinel node
+                hazards_signaled = n;
+                hazards_signaled->_val = new Rec<T>(); //sentinel rec
+                hazards_signaled->_next.store(nullptr, std::memory_order_release);
+                assert( records_busy.push_back(hazards_signaled) );
+                break;
+            }else{
+                //existing record found
+                assert( n );
+                if( nullptr != n->_val ){
+                    records_reinsert.insert(n);
+                }else{
+                    hazards_signaled = n;
+                    hazards_signaled->_val = new Rec<T>(); //sentinel rec
+                    hazards_signaled->_next.store(nullptr, std::memory_order_release);
+                    assert( records_busy.push_back(hazards_signaled) );
+                    break;
+                }
+            }
+        }
     }
 
     for(auto &i: records_reinsert){
-	i->_next.store(nullptr, std::memory_order_release);
-	assert( records_free.push_back(i) );
+        i->_next.store(nullptr, std::memory_order_release);
+        assert( records_free.push_back(i) );
     }
   
     assert(hazards_signaled);
@@ -95,91 +100,91 @@ hazard_guard<T> reclaim_hazard<T>::add_hazard( T * t ){
 
     //try recycle rec
     if(count_hazards_signaled > num_hazards*2){
-	Rec<T> * nn = hazards_signaled->_val->next.load( std::memory_order_acquire );
-	Rec<T> * last_nonnull = nullptr;
-	while(nn){
-	    T * v = nn->val.load( std::memory_order_acquire );
-	    if(nullptr!=v){
-		last_nonnull = nn;
-	    } 
-	    nn = nn->next.load( std::memory_order_acquire );      
-	}
+        Rec<T> * nn = hazards_signaled->_val->next.load( std::memory_order_acquire );
+        Rec<T> * last_nonnull = nullptr;
+        while(nn){
+            T * v = nn->val.load( std::memory_order_acquire );
+            if(nullptr!=v){
+                last_nonnull = nn;
+            } 
+            nn = nn->next.load( std::memory_order_acquire );      
+        }
 
-	if(last_nonnull){
-	    Rec<T> * start_remove = last_nonnull->next.load( std::memory_order_acquire );
-	    if(start_remove){
-		last_nonnull->next.store(nullptr);
-		assert( start_remove->val.load( std::memory_order_acquire ) == nullptr );
-		size_t num_freed = 0;
-		while( start_remove ){
-		    --count_hazards_signaled;
-		    ++num_freed;
-		    assert( nullptr == start_remove->val.load( std::memory_order_acquire ) );
-		    rec_free.push_back(start_remove);
-		    start_remove = start_remove->next.load( std::memory_order_acquire );
-		}
-	    }
-	}
+        if(last_nonnull){
+            Rec<T> * start_remove = last_nonnull->next.load( std::memory_order_acquire );
+            if(start_remove){
+                last_nonnull->next.store(nullptr, std::memory_order_release);
+                assert( start_remove->val.load( std::memory_order_acquire ) == nullptr );
+                size_t num_freed = 0;
+                while( start_remove ){
+                    --count_hazards_signaled;
+                    ++num_freed;
+                    assert( nullptr == start_remove->val.load( std::memory_order_acquire ) );
+                    rec_free.push_back(start_remove);
+                    start_remove = start_remove->next.load( std::memory_order_acquire );
+                }
+            }
+        }
     }
 
     //try find an empty slot in threadlocal records
     Rec<T> * nn_found_free = nullptr;
     Rec<T> * nn = hazards_signaled->_val->next.load( std::memory_order_acquire );
     while(nn){
-	T * v = nn->val.load( std::memory_order_acquire );
-	if(nullptr==v){
-	    nn_found_free = nn;
-	    break;
-	}
-	nn = nn->next.load( std::memory_order_acquire );
+        T * v = nn->val.load( std::memory_order_acquire );
+        if(nullptr==v){
+            nn_found_free = nn;
+            break;
+        }
+        nn = nn->next.load( std::memory_order_acquire );
     }
 
     Rec<T> * m = nullptr;
     if(nullptr!=nn_found_free){
 
-	//empty slot found
+        //empty slot found
     
-	m = nn_found_free;
-	m->val.store( t, std::memory_order_release );
+        m = nn_found_free;
+        m->val.store( t, std::memory_order_release );
     
-	return hazard_guard<T>(m);
+        return hazard_guard<T>(m);
     
     }else{
 
-	//try get rec from rec_free list
+        //try get rec from rec_free list
     
-	if(rec_free.empty()){
-	    m = new Rec<T>( t );
-	}else{
-	    m = rec_free.back();
-	    rec_free.pop_back();
-	    assert( nullptr == m->val.load( std::memory_order_acquire ) );
-	    m->val.store( t, std::memory_order_release );
-	    m->next.store( nullptr, std::memory_order_release );
-	}
+        if(rec_free.empty()){
+            m = new Rec<T>( t );
+        }else{
+            m = rec_free.back();
+            rec_free.pop_back();
+            assert( nullptr == m->val.load( std::memory_order_acquire ) );
+            m->val.store( t, std::memory_order_release );
+            m->next.store( nullptr, std::memory_order_release );
+        }
 
-	++count_hazards_signaled;
+        ++count_hazards_signaled;
     
-	//insert rec into threadlocal hazard signal list
+        //insert rec into threadlocal hazard signal list
     
-	Rec<T> * r = hazards_signaled->_val->next.load( std::memory_order_acquire );
-	m->next.store( r, std::memory_order_release );
-	while( !hazards_signaled->_val->next.compare_exchange_weak( r, m ) ){
-	    r = hazards_signaled->_val->next.load( std::memory_order_acquire );
-	    m->next.store( r, std::memory_order_release );
-	}
+        Rec<T> * r = hazards_signaled->_val->next.load( std::memory_order_acquire );
+        m->next.store( r, std::memory_order_release );
+        while( !hazards_signaled->_val->next.compare_exchange_weak( r, m ) ){
+            r = hazards_signaled->_val->next.load( std::memory_order_acquire );
+            m->next.store( r, std::memory_order_release );
+        }
     
-	return hazard_guard<T>(m);
+        return hazard_guard<T>(m);
     }
 }
 
 template<typename T>
 void reclaim_hazard<T>::retire_hazard( T * t){
     if(t){
-	hazards.push_back(t);
-	if( hazards.size() > num_hazards ){ //assumes fixed number of hazards for now
-	    scan();
-	}
+        hazards.push_back(t);
+        if( hazards.size() > num_hazards ){ //assumes fixed number of hazards for now
+            scan();
+        }
     }
 }
 
@@ -189,18 +194,18 @@ void reclaim_hazard<T>::scan(){
     //collect global hazards
     std::unordered_set<T*> collect_hazards;
     auto f = [&collect_hazards]( Records * const records ){
-	if(records){
-	    Rec<T> * r = records->_val;//sentinel
-	    assert(r);
-	    Rec<T> * n = r->next.load( std::memory_order_acquire );
-	    while(n){
-		T * v = n->val.load( std::memory_order_acquire );
-		if( v ){
-		    collect_hazards.insert(v);
-		}
-		n = n->next.load( std::memory_order_acquire );
-	    }
-	}
+        if(records){
+            Rec<T> * r = records->_val;//sentinel
+            assert(r);
+            Rec<T> * n = r->next.load( std::memory_order_acquire );
+            while(n){
+                T * v = n->val.load( std::memory_order_acquire );
+                if( v ){
+                    collect_hazards.insert(v);
+                }
+                n = n->next.load( std::memory_order_acquire );
+            }
+        }
     };
 
     records_busy.for_each(f);
@@ -209,13 +214,13 @@ void reclaim_hazard<T>::scan(){
     std::vector<T*> temp;
     std::swap(temp,hazards);
     for(auto&i: temp){
-	if(i){
-	    if(collect_hazards.end() != collect_hazards.find(i)){
-		hazards.push_back(i);
-	    }else{
-		reuse(i);
-	    }
-	}
+        if(i){
+            if(collect_hazards.end() != collect_hazards.find(i)){
+                hazards.push_back(i);
+            }else{
+                reuse(i);
+            }
+        }
     }
 }
 
@@ -226,19 +231,19 @@ void reclaim_hazard<T>::reuse( T * t ){
     free_list.push_back(t);
   
     if( free_list.size() > capacity_freelist ){
-	for( int i = 0; i < capacity_freelist/2; ++i ){
-	    T * t = free_list.back();
-	    free_list.pop_back();
-	    delete t;
-	}
+        for( int i = 0; i < capacity_freelist/2; ++i ){
+            T * t = free_list.back();
+            free_list.pop_back();
+            delete t;
+        }
     }
 
     if( rec_free.size() > capacity_freelist ){
-	for( int i = 0; i < capacity_freelist/2; ++i ){
-	    Rec<T> * r = rec_free.back();
-	    rec_free.pop_back();
-	    delete r;
-	}
+        for( int i = 0; i < capacity_freelist/2; ++i ){
+            Rec<T> * r = rec_free.back();
+            rec_free.pop_back();
+            delete r;
+        }
     }
 }
 
@@ -246,11 +251,11 @@ void reclaim_hazard<T>::reuse( T * t ){
 template<typename T>
 T * reclaim_hazard<T>::new_from_recycled(){
     if(free_list.empty()){
-	return nullptr;
+        return nullptr;
     }else{
-	T * t = free_list.back();
-	free_list.pop_back();
-	return t;
+        T * t = free_list.back();
+        free_list.pop_back();
+        return t;
     }
 }
 
@@ -260,19 +265,19 @@ void reclaim_hazard<T>::thread_deinit(){
     //collect global hazards
     std::unordered_set<T*> collect_hazards;
     auto f = [&collect_hazards]( Records * const records ){
-	if(records){
-	    Rec<T> * r = records->_val;//sentinel
-	    if(r){
-		Rec<T> * n = r->next.load( std::memory_order_acquire );
-		while(n){
-		    T * v = n->val.load( std::memory_order_acquire );
-		    if( v ){
-			collect_hazards.insert(v);
-		    }
-		    n = n->next.load( std::memory_order_acquire );
-		}
-	    }
-	}
+        if(records){
+            Rec<T> * r = records->_val;//sentinel
+            if(r){
+                Rec<T> * n = r->next.load( std::memory_order_acquire );
+                while(n){
+                    T * v = n->val.load( std::memory_order_acquire );
+                    if( v ){
+                        collect_hazards.insert(v);
+                    }
+                    n = n->next.load( std::memory_order_acquire );
+                }
+            }
+        }
     };
 
     records_busy.for_each(f);
@@ -281,13 +286,13 @@ void reclaim_hazard<T>::thread_deinit(){
     std::vector<T*> temp;
     std::swap(temp,hazards);
     for(auto&i: temp){
-	if(i){
-	    if(collect_hazards.end() != collect_hazards.find(i)){
-		hazards.push_back(i);
-	    }else{
-		free_list.push_back(i);
-	    }
-	}
+        if(i){
+            if(collect_hazards.end() != collect_hazards.find(i)){
+                hazards.push_back(i);
+            }else{
+                free_list.push_back(i);
+            }
+        }
     }
 
     //remove from global records
@@ -296,36 +301,36 @@ void reclaim_hazard<T>::thread_deinit(){
     
     if( nullptr != hazards_signaled ){
     
-	assert( hazards_signaled->_val );
-	Rec<T> * n = hazards_signaled->_val->next.load(std::memory_order_acquire);
+        assert( hazards_signaled->_val );
+        Rec<T> * n = hazards_signaled->_val->next.load(std::memory_order_acquire);
   
-	while(!hazards_signaled->_val->next.compare_exchange_strong(n,nullptr)){
-	    n = hazards_signaled->_val->next.load(std::memory_order_acquire);
-	}
+        while(!hazards_signaled->_val->next.compare_exchange_strong(n,nullptr)){
+            n = hazards_signaled->_val->next.load(std::memory_order_acquire);
+        }
   
-	while( n ){
-	    collected_records.insert(n);
-	    n = n->next.load(std::memory_order_acquire);
-	}
-	hazards_signaled = nullptr;
+        while( n ){
+            collected_records.insert(n);
+            n = n->next.load(std::memory_order_acquire);
+        }
+        hazards_signaled = nullptr;
     }
 
     size_t count_non_null_hazards = 0;
 
     for( auto & i: collected_records ){
-	assert(i);
-	T *  v = i->val.load( std::memory_order_acquire );
-	if(nullptr!=v){
-	    ++count_non_null_hazards;
-	}
-	i->next.store(nullptr, std::memory_order_release );
-	std::lock_guard<std::mutex> l(mutex_deinit);
-	rec_free_global.push_back(i);
+        assert(i);
+        T *  v = i->val.load( std::memory_order_acquire );
+        if(nullptr!=v){
+            ++count_non_null_hazards;
+        }
+        i->next.store(nullptr, std::memory_order_release );
+        std::lock_guard<std::mutex> l(mutex_deinit);
+        rec_free_global.push_back(i);
     }
     collected_records.clear();
 
     for( auto & i: rec_free ){
-	rec_free_global.push_back(i);
+        rec_free_global.push_back(i);
     }
     rec_free.clear();
 
@@ -334,16 +339,16 @@ void reclaim_hazard<T>::thread_deinit(){
 
     //deallocate T's
     for( auto & i : free_list ){
-	if(i){
-	    delete i;
-	}
+        if(i){
+            delete i;
+        }
     }
     free_list.clear();
 
     //defer deallocating remaining T's
     for(auto&i: hazards){
-	std::lock_guard<std::mutex> l(mutex_deinit);
-	global_hazards.insert(i);
+        std::lock_guard<std::mutex> l(mutex_deinit);
+        global_hazards.insert(i);
     }
     hazards.clear();
 
@@ -358,51 +363,51 @@ void reclaim_hazard<T>::final_deinit(){
   
     //deallocate T's
     {
-	std::lock_guard<std::mutex> l(mutex_deinit);
-	for(auto&i:global_hazards){
-	    assert(nullptr!=i);
-	    delete i;
-	}
-	global_hazards.clear();
+        std::lock_guard<std::mutex> l(mutex_deinit);
+        for(auto&i:global_hazards){
+            assert(nullptr!=i);
+            delete i;
+        }
+        global_hazards.clear();
     }
   
     //deallocate Rec's
     {
-	std::lock_guard<std::mutex> l(mutex_deinit);
-	for(auto& i: rec_free_global ){
-	    assert(i);
-	    delete i;
-	}
-	rec_free_global.clear();
+        std::lock_guard<std::mutex> l(mutex_deinit);
+        for(auto& i: rec_free_global ){
+            assert(i);
+            delete i;
+        }
+        rec_free_global.clear();
     }
 
     //deallocate Records and sentinel Rec's
     while( records_free.size() > 0 ){
-	Records * n = nullptr;
-	if( records_free.pop_front(n) ){
-	    assert(n);
-	    Rec<T> * nn = n->_val;
-	    while(nullptr!=nn){
-		Rec<T> * nnn = nn->next.load( std::memory_order_acquire );
-		delete nn;
-		nn = nnn;
-	    }
-	    delete n;
-	}
+        Records * n = nullptr;
+        if( records_free.pop_front(n) ){
+            assert(n);
+            Rec<T> * nn = n->_val;
+            while(nullptr!=nn){
+                Rec<T> * nnn = nn->next.load( std::memory_order_acquire );
+                delete nn;
+                nn = nnn;
+            }
+            delete n;
+        }
     }
 
     while( records_busy.size() > 0 ){
-	Records * n = nullptr;
-	if( records_busy.pop_front(n) ){
-	    assert(n);
-	    Rec<T> * nn = n->_val;
-	    while(nullptr!=nn){
-		Rec<T> * nnn = nn->next.load( std::memory_order_acquire );
-		delete nn;
-		nn = nnn;
-	    }
-	    delete n;
-	}
+        Records * n = nullptr;
+        if( records_busy.pop_front(n) ){
+            assert(n);
+            Rec<T> * nn = n->_val;
+            while(nullptr!=nn){
+                Rec<T> * nnn = nn->next.load( std::memory_order_acquire );
+                delete nn;
+                nn = nnn;
+            }
+            delete n;
+        }
     }
 
     assert( global_hazards.empty() );

@@ -19,8 +19,8 @@ public:
     
     using _t_data = T;
 
-    static constexpr int FREQ_RECYCLE = 1000;
-    static constexpr int FREQ_EPOCH = 1000;
+    static constexpr int FREQ_RECYCLE = 10;
+    static constexpr int FREQ_EPOCH = 10;
 
     static constexpr uint64_t EPOCH_DEFAULT = std::numeric_limits<uint64_t>::max();
 
@@ -28,7 +28,8 @@ public:
     public:
         epoch_guard(std::atomic<uint64_t> * f): flag(f){}
         ~epoch_guard(){
-            flag->store(EPOCH_DEFAULT);
+            // flag->store(EPOCH_DEFAULT, std::memory_order_release);
+            flag->store(EPOCH_DEFAULT, std::memory_order_relaxed);
         }
         epoch_guard( epoch_guard && other ){
             flag = other.flag;

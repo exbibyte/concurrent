@@ -168,7 +168,7 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
                 for( int j = 0; j < nums/num_threads; ++j ){
                     while(true){
                         if(auto ret = queue.get()){
-                            ++retrieved[*ret];
+                            //++retrieved[*ret];
                             break;
                         }
                         std::this_thread::yield();

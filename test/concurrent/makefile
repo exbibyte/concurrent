@@ -27,10 +27,11 @@ $(shell mkdir -p $(dir_build))
 
 targets := $(patsubst %.cpp, %, $(wildcard *.cpp))
 
-libs := -pthread
+libs := -pthread -ltcmalloc -lprofiler
+# libs := -pthread
 
 %: %.cpp
-	$(CXX) $(FLAGS) -std=c++1z -o $(dir_build)/$@ $^ $(object_files) $(include_flags) $(libs)
+	$(CXX) $(FLAGS) -std=c++1z -o $(dir_build)/$@ $^ $(object_files) $(include_flags) -L/usr/local/lib $(libs)
 
 .PHONY: all
 all: $(targets)

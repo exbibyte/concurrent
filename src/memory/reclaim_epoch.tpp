@@ -24,9 +24,9 @@ queue_lockfree_simple<std::atomic<uint64_t>*> reclaim_epoch<T>::epoch_list;
 template<class T>
 void reclaim_epoch<T>::retire(T * resource){
     
-    auto e = epoch_global.load();
+    auto e = epoch_global.load(std::memory_order_acquire);
     
-    epoch_local.store(e);
+    epoch_local.store(e, std::memory_order_relaxed);
 
     local_recycle.push_back({resource, e});
 
@@ -42,8 +42,8 @@ void reclaim_epoch<T>::retire(T * resource){
 
 template<class T>
 typename reclaim_epoch<T>::epoch_guard reclaim_epoch<T>::critical_section(){    
-    uint8_t e = epoch_global.load();
-    epoch_local.store(e);
+    uint8_t e = epoch_global.load(std::memory_order_acquire);
+    epoch_local.store(e, std::memory_order_relaxed);
     return epoch_guard( &epoch_local );
 }
 
@@ -54,14 +54,14 @@ void reclaim_epoch<T>::recycle(){
     uint64_t low = std::numeric_limits<uint64_t>::max();
 
     auto fn = [&](queue_lockfree_simple<std::atomic<uint64_t>*>::Node * i){
-        auto v = i->_val->load();
+        auto v = i->_val->load(std::memory_order_acquire);
         low = std::min(low, v);
     };
 
     epoch_list.for_each(fn);
         
     std::vector<std::pair<T*, uint64_t>> temp;
-    for(auto [resource, epoch]: local_recycle){
+    for(auto &[resource, epoch]: local_recycle){
         if(epoch < low && resource){
             delete resource;
             ++count_recycled;
@@ -76,7 +76,7 @@ void reclaim_epoch<T>::recycle(){
 template<class T>
 void reclaim_epoch<T>::recycle_final(){
 
-    for(auto [resource, epoch]: local_recycle){
+    for(auto &[resource, epoch]: local_recycle){
         if(resource){
             delete resource;
         }
@@ -98,7 +98,7 @@ void reclaim_epoch<T>::unregister_thread(){
 
 template<class T>
 int reclaim_epoch<T>::sync(){
-    //wait for all threads' epochs to become equal
+    //todo.. wait for all threads' epochs to become equal
     while(true){
         auto e = epoch_global.load();
         epoch_local.store(e);
@@ -118,7 +118,7 @@ int reclaim_epoch<T>::sync(){
         if(valid)
             return e;
     }
-    assert(false);
+    assert(false); //should not come here
     return -1;
 }
 
