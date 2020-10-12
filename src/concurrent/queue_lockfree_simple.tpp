@@ -119,8 +119,8 @@ void queue_lockfree_simple_impl<T>::for_each( std::function<void(Node * const)> 
     Node * node = _head.load(std::memory_order_acquire);
     Node * nn = node->_next.load(std::memory_order_acquire);
     while(!_head.compare_exchange_weak( node, node, std::memory_order_acquire )){
-	node = _head.load(std::memory_order_acquire);
-	nn = node->_next.load(std::memory_order_acquire);
+        node = _head.load(std::memory_order_acquire);
+        nn = node->_next.load(std::memory_order_acquire);
     }
     
     while( nn ){

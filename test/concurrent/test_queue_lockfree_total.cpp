@@ -144,7 +144,7 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
 
     unsigned int num_threads = std::thread::hardware_concurrency();
     
-    size_t nums = num_threads * 1'000'000;
+    size_t nums = num_threads * 3000000;
     
     vector<int> retrieved( nums, 0);
 
@@ -152,13 +152,28 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
     vector<thread> threads2( num_threads );
     
     auto t0 = std::chrono::high_resolution_clock::now();
-        
+
+    // int sync = 0;
+    // std::mutex m;
+    // std::condition_variable cv;
+    
     for( int i = 0; i < num_threads; ++i ){
         threads[i] = std::thread( [ &, i ](){
                 int val = nums/num_threads*i;
                 for( int j = 0; j < nums/num_threads; ++j ){
                     while( !queue.put( val + j ) ){} //force enqueue
                 }
+                
+                // {
+                //     std::scoped_lock<std::mutex> l(m);
+                //     sync++;
+                // }
+                // cv.notify_all();
+                // {
+                //     std::unique_lock<std::mutex> l(m);
+                //     cv.wait(l, [&](){return sync==2*num_threads;});
+                // }
+                
                 queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
             } );
     }
@@ -174,6 +189,7 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
                         std::this_thread::yield();
                     } 
                 }
+
                 queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
             } );
     }
@@ -215,7 +231,7 @@ TEST_CASE( "queue_locking_reference", "[queue locking reference]" ) {
 
     unsigned int num_threads = std::thread::hardware_concurrency();
     
-    size_t nums = num_threads * 1'000'000;
+    size_t nums = num_threads * 3000000;
 
     vector<int> retrieve(nums, 0);
 
@@ -262,7 +278,7 @@ TEST_CASE( "queue_locking_reference", "[queue locking reference]" ) {
     auto t1 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> dur = t1 - t0;
     auto dur_ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur);
-    std::cout << "duration: " << dur_ms.count() << " ms. rate: " <<  (double)nums/dur_ms.count()*1000.0 << " put-get/sec." << std::endl;
+    std::cout << "reference: duration: " << dur_ms.count() << " ms. rate: " <<  (double)nums/dur_ms.count()*1000.0 << " put-get/sec." << std::endl;
 
     assert(queue.size()==0);
 }

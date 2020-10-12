@@ -35,6 +35,8 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
   - lockfree queue
     - queue_lockfree_total with hazard pointer
     - queue_lockfree_total with epoch based reclamation
+  - lockfree stack
+    - stack_lockfree_total_simple with hazard pointer
 
 # other notes
   - currently uses C++1z

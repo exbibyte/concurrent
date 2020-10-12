@@ -13,7 +13,7 @@ using namespace std;
 
 TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) { 
 
-    stack_lockfree_total_simple<int, trait_reclamation::not_applicable> stack;
+    stack_lockfree_total_simple<int, trait_reclamation::hp> stack;
 
     SECTION( "put" ) {
         size_t count = stack.size();
@@ -48,6 +48,7 @@ TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) {
             threads[i] = std::thread( [ &stack, i ](){
                     int num = i;
                     stack.put( num );
+                    stack_lockfree_total_simple<int, trait_reclamation::hp>::thread_deinit();
                 } );
         }
         for( auto & i : threads ){
@@ -57,16 +58,16 @@ TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) {
         CHECK( num_threads == count );
 
         SECTION( "multi-thread get" ) {
-            set<int> vals_retrieve;
-            mutex mtx;
+            vector<int> vals_retrieve(num_threads, 0);
             for( auto & i : threads ){
                 i = std::thread( [&](){
-                        auto ret = stack.get();
-                        mtx.lock();
-                        if( ret ){
-                            vals_retrieve.insert( *ret );
+                        while(true){//force retrieval
+                            if( auto ret = stack.get() ){
+                                vals_retrieve[*ret]++;
+                                break;
+                            }    
                         }
-                        mtx.unlock();
+                        stack_lockfree_total_simple<int, trait_reclamation::hp>::thread_deinit();
                     } );
             }
             for( auto & i : threads ){
@@ -75,11 +76,11 @@ TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) {
             count = stack.size();
             CHECK( 0 == count );
             for( int i = 0; i < num_threads; ++i ){
-                auto it = vals_retrieve.find(i);
-                CHECK( vals_retrieve.end() != it );
-                if( vals_retrieve.end() != it )
-                    vals_retrieve.erase(it);
+                CHECK(vals_retrieve[i]==1);
             }
         }
     }
+
+    stack_lockfree_total_simple<int, trait_reclamation::hp>::thread_deinit();
+    
 }

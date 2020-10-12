@@ -5,6 +5,8 @@ test_algo = ./test/algo
 
 sub_dir =  ./src/*
 
+.PHONY: build_concurrent build_hash build_hashtable build_memory build_all build_test_concurrent build_test_hashtable build_test_memory build_tests clean
+
 build_concurrent:
 	$(MAKE) -C ./src/concurrent all
 
@@ -30,10 +32,8 @@ build_test_memory:
 
 build_tests: build_test_concurrent build_test_hashtable build_test_memory
 
-.PHONY: all
 all: build_all build_tests
 
-.PHONY: clean
 clean:
 	for dir in $(sub_dir); do \
 	  ($(MAKE) -C $$dir clean);\

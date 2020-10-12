@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <unordered_set>
 #include <mutex>
+#include <list>
+#include <vector>
 
 #include "queue_lockfree_simple.hpp"
 
@@ -24,11 +26,13 @@ template<class T>
 class hazard_guard {
 public:
     hazard_guard( Rec<T> * );
-    hazard_guard( hazard_guard && other );
+    hazard_guard( hazard_guard<T> && other );
+    hazard_guard& operator=( hazard_guard<T> && other );
     ~hazard_guard();
-    hazard_guard() = delete;
-    hazard_guard(hazard_guard const &) = delete;
-    hazard_guard& operator=(hazard_guard const &) = delete;
+    hazard_guard() : hazard(nullptr) {}
+    void done() { ~hazard_guard(); }
+    hazard_guard(hazard_guard<T> const &) = delete;
+    hazard_guard& operator=(hazard_guard<T> const &) = delete;
 private:
     Rec<T> * hazard;
 };
@@ -67,16 +71,19 @@ private:
     static std::unordered_set<T *> global_hazards;
   
     //no longer a hazard
-    static thread_local std::vector<T*> free_list;
+    static thread_local std::list<T*> free_list;
   
     //hazards signaled from current thread
     static thread_local Records* hazards_signaled;
     static thread_local size_t count_hazards_signaled;
   
     //constants for recycling sweeps
-    static constexpr size_t num_hazards = 1000; //recycles Rec's
-    static constexpr size_t capacity_freelist = 1000; //recycles T's
-
+    static constexpr size_t num_hazards = 10000; //recycles Rec's
+    static constexpr size_t capacity_freelist = 10000; //recycles T's
+    
+    // static constexpr bool can_recycle_rec = false;
+    static constexpr bool can_recycle_rec = true;
+    
     //free list for Records (queue_lockfree_simple<Rec<T>*>::Node)
     static queue_lockfree_simple<Rec<T>*> records_free;
 
@@ -84,13 +91,14 @@ private:
     static queue_lockfree_simple<Rec<T>*> records_busy;
 
     //free list of Rec<T>* 
-    static thread_local std::vector<Rec<T>*> rec_free;
+    static thread_local std::list<Rec<T>*> rec_free;
 
     //for final deinit
     static std::vector<Rec<T>*> rec_free_global;
 
     ///final deinit helper
-    static std::mutex mutex_deinit;
+    static std::mutex mutex_deinit_global_hazards;
+    static std::mutex mutex_deinit_rec_free_global;
 };
 
 #include "reclaim_hazard.tpp"

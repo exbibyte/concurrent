@@ -29,7 +29,7 @@ public:
 		             Node(): _next( nullptr ) {}
 		             Node( _t_val const & val ): _val(val), _next( nullptr ) {}
                      Node( _t_val && val ): _val(val), _next( nullptr ) {}
-	      };
+              };
 
                queue_lockfree_simple_impl();
                ~queue_lockfree_simple_impl();

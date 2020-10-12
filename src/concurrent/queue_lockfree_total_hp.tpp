@@ -39,14 +39,27 @@ void queue_lockfree_total_impl<T, trait_reclamation::hp>::thread_deinit(){
 
 template< typename T >
 bool queue_lockfree_total_impl<T, trait_reclamation::hp>::push_back( T && val ){ //push item to the tail
-    Node * new_node = new Node( val );
-    return push_back_aux(new_node);
+
+    if(auto existing = reclaim_hazard<Node>::new_from_recycled()){
+        existing->_val = std::move(val);
+        existing->_next = nullptr;
+        return push_back_aux(existing);        
+    }else{
+        Node * new_node = new Node( val );
+        return push_back_aux(new_node);
+    }
 }
 
 template< typename T >
 bool queue_lockfree_total_impl<T, trait_reclamation::hp>::push_back( T const & val ){ //push item to the tail
-    Node * new_node = new Node( val );
-    return push_back_aux(new_node);
+    if(auto existing = reclaim_hazard<Node>::new_from_recycled()){
+        existing->_val = val;
+        existing->_next = nullptr;
+        return push_back_aux(existing);        
+    }else{
+        Node * new_node = new Node( val );
+        return push_back_aux(new_node);
+    }
 }
 
 template< typename T >
@@ -55,22 +68,23 @@ bool queue_lockfree_total_impl<T, trait_reclamation::hp>::push_back_aux( Node * 
         Node * tail = _tail.load( std::memory_order_relaxed );
 
         hazard_guard<Node> guard = reclaim_hazard<Node>::add_hazard( tail );
-    
-        if( nullptr == tail ){
-            return false;
-        }
-                
-        if( !_tail.compare_exchange_weak( tail, tail, std::memory_order_relaxed ) ){
-            std::this_thread::yield();
-            continue;
-        }
-        
+
         Node * tail_next = tail->_next.load( std::memory_order_relaxed );
+
+        hazard_guard<Node> guard2 = reclaim_hazard<Node>::add_hazard( tail_next );
+
+        // if( !_tail.compare_exchange_weak( tail, tail, std::memory_order_relaxed ) ){
+        //     std::this_thread::yield();
+        //     continue;
+        // }
+
         if( nullptr == tail_next ){  //determine if thread has reached tail
             if( tail->_next.compare_exchange_weak( tail_next, new_node, std::memory_order_acq_rel ) ){ //add new node
                 _tail.compare_exchange_weak( tail, new_node, std::memory_order_relaxed ); //if thread succeeds, set new tail
                 return true;
-            }
+            }else{
+                std::this_thread::yield();
+            }    
         }else{
             _tail.compare_exchange_weak( tail, tail_next, std::memory_order_relaxed ); //update tail and retry
             std::this_thread::yield();
@@ -79,31 +93,24 @@ bool queue_lockfree_total_impl<T, trait_reclamation::hp>::push_back_aux( Node * 
 }
 template< typename T >
 std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::hp>::pop_front(){ //obtain item from the head
+    
     while( true ){
+        
         Node * head = _head.load( std::memory_order_relaxed );
 
         hazard_guard<Node> guard1 = reclaim_hazard<Node>::add_hazard( head );
-    
-        if( nullptr == head ){
-            return std::nullopt;
-        }
-
-        if(!_head.compare_exchange_weak( head, head, std::memory_order_relaxed )){
-            std::this_thread::yield();
-            continue;
-        }
         
         Node * tail = _tail.load( std::memory_order_relaxed );
-        
+
         Node * head_next = head->_next.load( std::memory_order_relaxed );
 
         hazard_guard<Node> guard2 = reclaim_hazard<Node>::add_hazard(head_next);
-    
-        if(!_head.compare_exchange_weak( head, head, std::memory_order_relaxed )){
-            std::this_thread::yield();
-            continue;
-        }
-
+        
+        // if(!_head.compare_exchange_weak( head, head, std::memory_order_relaxed )){
+        //     std::this_thread::yield();
+        //     continue;
+        // }
+        
         if( head == tail ){
             if( nullptr == head_next ){//empty
                 return std::nullopt;
@@ -112,12 +119,14 @@ std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::hp>::pop_front(
                 std::this_thread::yield();
             }
         }else{
-            //val = head_next->_val; //optimization: reordered to after exchange due to hazard pointer guarantees
-            if( _head.compare_exchange_weak( head, head_next, std::memory_order_relaxed ) ){ //try add new item
+            //val = std::move(head_next->_val); //optimization: reordered to after exchange due to hazard pointer guarantees
+            if( _head.compare_exchange_weak( head, head_next, std::memory_order_acq_rel ) ){ //try add new item
                 //thread suceeds
-                T val(head_next->_val);
+                T val(std::move(head_next->_val));
                 reclaim_hazard<Node>::retire_hazard(head);
                 return std::optional<T>(val);
+            }else{
+                std::this_thread::yield();
             }
         }
     }

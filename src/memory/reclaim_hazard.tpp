@@ -1,4 +1,5 @@
 #include <vector>
+#include <list>
 #include <thread>
 #include <cassert>
 #include <memory>
@@ -8,7 +9,7 @@ template<typename T>
 thread_local std::vector<T*> reclaim_hazard<T>::hazards {};
 
 template<typename T>
-thread_local std::vector<T*> reclaim_hazard<T>::free_list {};
+thread_local std::list<T*> reclaim_hazard<T>::free_list {};
 
 template<typename T>
 thread_local typename reclaim_hazard<T>::Records * reclaim_hazard<T>::hazards_signaled = nullptr;
@@ -20,7 +21,10 @@ template<typename T>
 std::unordered_set<T *> reclaim_hazard<T>::global_hazards;
 
 template<typename T>
-std::mutex reclaim_hazard<T>::mutex_deinit;
+std::mutex reclaim_hazard<T>::mutex_deinit_global_hazards;
+
+template<typename T>
+std::mutex reclaim_hazard<T>::mutex_deinit_rec_free_global;
 
 template<typename T>
 queue_lockfree_simple<Rec<T>*> reclaim_hazard<T>::records_free;
@@ -29,7 +33,7 @@ template<typename T>
 queue_lockfree_simple<Rec<T>*> reclaim_hazard<T>::records_busy;
 
 template<typename T>
-thread_local std::vector<Rec<T>*> reclaim_hazard<T>::rec_free {};
+thread_local std::list<Rec<T>*> reclaim_hazard<T>::rec_free {};
 
 template<typename T>
 std::vector<Rec<T>*> reclaim_hazard<T>::rec_free_global {};
@@ -37,21 +41,32 @@ std::vector<Rec<T>*> reclaim_hazard<T>::rec_free_global {};
 template<typename T>
 hazard_guard<T>::hazard_guard( Rec<T> * r ){
     assert( r );
-    this->hazard = r;
+    hazard = r;
 }
 
 template<typename T>
 hazard_guard<T>::~hazard_guard(){
     //signal hazard in global record to null when guard goes out of scope
-    if( this->hazard ){
-        this->hazard->val.store(nullptr, std::memory_order_release);
+    if( hazard ){
+        hazard->val.store(nullptr, std::memory_order_release);
+        hazard = nullptr;
     }
 }
 
 template<typename T>
-hazard_guard<T>::hazard_guard( hazard_guard && other ){
+hazard_guard<T>::hazard_guard( hazard_guard<T> && other ){
     hazard = other.hazard;
     other.hazard = nullptr;
+}
+
+template<typename T>
+hazard_guard<T> & hazard_guard<T>::operator=( hazard_guard<T> && other ){
+    if( hazard ){
+        hazard->val.store(nullptr, std::memory_order_release);
+    }
+    hazard = other.hazard;
+    other.hazard = nullptr;
+    return *this;
 }
 
 template<typename T>
@@ -152,16 +167,18 @@ hazard_guard<T> reclaim_hazard<T>::add_hazard( T * t ){
     }else{
 
         //try get rec from rec_free list
-    
-        if(rec_free.empty()){
-            m = new Rec<T>( t );
-        }else{
-            m = rec_free.back();
-            rec_free.pop_back();
-            assert( nullptr == m->val.load( std::memory_order_acquire ) );
-            m->val.store( t, std::memory_order_release );
-            m->next.store( nullptr, std::memory_order_release );
+        static_assert(capacity_freelist>1);
+        if(rec_free.size() < 0.5 * capacity_freelist){
+            int l = std::max(rec_free.size() * 2, capacity_freelist);
+            for(int i=0; i < l; ++i){
+                rec_free.push_back(new Rec<T>());
+            }
         }
+        m = rec_free.front();
+        rec_free.pop_front();
+        assert( nullptr == m->val.load( std::memory_order_acquire ) );
+        m->val.store( t, std::memory_order_release );
+        m->next.store( nullptr, std::memory_order_release );
 
         ++count_hazards_signaled;
     
@@ -213,8 +230,9 @@ void reclaim_hazard<T>::scan(){
     //garbage collect freed hazards
     std::vector<T*> temp;
     std::swap(temp,hazards);
+    std::unordered_set<T*> seen;    
     for(auto&i: temp){
-        if(i){
+        if(i && seen.count(i) == 0){
             if(collect_hazards.end() != collect_hazards.find(i)){
                 hazards.push_back(i);
             }else{
@@ -227,22 +245,24 @@ void reclaim_hazard<T>::scan(){
 //dump into freelist freelist
 template<typename T>
 void reclaim_hazard<T>::reuse( T * t ){
-  
+
     free_list.push_back(t);
   
-    if( free_list.size() > capacity_freelist ){
-        for( int i = 0; i < capacity_freelist/2; ++i ){
-            T * t = free_list.back();
-            free_list.pop_back();
-            delete t;
+    if( free_list.size() > 4 * capacity_freelist ){
+        for( int i = 0; i < capacity_freelist; ++i ){
+            T * tt = free_list.front();
+            free_list.pop_front();
+            delete tt;
         }
     }
 
-    if( rec_free.size() > capacity_freelist ){
-        for( int i = 0; i < capacity_freelist/2; ++i ){
-            Rec<T> * r = rec_free.back();
-            rec_free.pop_back();
-            delete r;
+    if(can_recycle_rec){
+        if( rec_free.size() > 4 * capacity_freelist ){
+            for( int i = 0; i < capacity_freelist; ++i ){
+                Rec<T> * r = rec_free.front();
+                rec_free.pop_front();
+                delete r;
+            }
         }
     }
 }
@@ -253,8 +273,8 @@ T * reclaim_hazard<T>::new_from_recycled(){
     if(free_list.empty()){
         return nullptr;
     }else{
-        T * t = free_list.back();
-        free_list.pop_back();
+        T * t = free_list.front();
+        free_list.pop_front();
         return t;
     }
 }
@@ -324,13 +344,16 @@ void reclaim_hazard<T>::thread_deinit(){
             ++count_non_null_hazards;
         }
         i->next.store(nullptr, std::memory_order_release );
-        std::lock_guard<std::mutex> l(mutex_deinit);
+        std::lock_guard<std::mutex> l(mutex_deinit_rec_free_global);
         rec_free_global.push_back(i);
     }
     collected_records.clear();
 
+    //maybe not needed
     for( auto & i: rec_free ){
-        rec_free_global.push_back(i);
+        if(i) delete i;
+        // std::lock_guard<std::mutex> l(mutex_deinit_rec_free_global);
+        // rec_free_global.push_back(i);
     }
     rec_free.clear();
 
@@ -347,7 +370,7 @@ void reclaim_hazard<T>::thread_deinit(){
 
     //defer deallocating remaining T's
     for(auto&i: hazards){
-        std::lock_guard<std::mutex> l(mutex_deinit);
+        std::lock_guard<std::mutex> l(mutex_deinit_global_hazards);
         global_hazards.insert(i);
     }
     hazards.clear();
@@ -363,7 +386,7 @@ void reclaim_hazard<T>::final_deinit(){
   
     //deallocate T's
     {
-        std::lock_guard<std::mutex> l(mutex_deinit);
+        std::lock_guard<std::mutex> l(mutex_deinit_global_hazards);
         for(auto&i:global_hazards){
             assert(nullptr!=i);
             delete i;
@@ -373,7 +396,7 @@ void reclaim_hazard<T>::final_deinit(){
   
     //deallocate Rec's
     {
-        std::lock_guard<std::mutex> l(mutex_deinit);
+        std::lock_guard<std::mutex> l(mutex_deinit_rec_free_global);
         for(auto& i: rec_free_global ){
             assert(i);
             delete i;

@@ -34,7 +34,9 @@ public:
               template< class... Args >
               IPool( Args&& ... args ) : container_type( std::forward<Args>(args)... ) {}
               ~IPool(){}
-    
+
+  static void thread_init(){ container_type::thread_init(); }
+  static void thread_deinit(){ container_type::thread_deinit(); }
          bool clear(){ return container_type::clear(); }
          bool empty(){ return container_type::empty(); }
     size_type size(){ return container_type::size(); }
