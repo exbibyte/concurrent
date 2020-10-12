@@ -142,7 +142,7 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
     
     queue_lockfree_total<int, trait_reclamation::hp> queue;
 
-    unsigned int num_threads = std::thread::hardware_concurrency();
+    unsigned int num_threads = std::thread::hardware_concurrency()/2;
     
     size_t nums = num_threads * 3000000;
     
@@ -153,27 +153,13 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
     
     auto t0 = std::chrono::high_resolution_clock::now();
 
-    // int sync = 0;
-    // std::mutex m;
-    // std::condition_variable cv;
-    
     for( int i = 0; i < num_threads; ++i ){
         threads[i] = std::thread( [ &, i ](){
                 int val = nums/num_threads*i;
                 for( int j = 0; j < nums/num_threads; ++j ){
                     while( !queue.put( val + j ) ){} //force enqueue
                 }
-                
-                // {
-                //     std::scoped_lock<std::mutex> l(m);
-                //     sync++;
-                // }
-                // cv.notify_all();
-                // {
-                //     std::unique_lock<std::mutex> l(m);
-                //     cv.wait(l, [&](){return sync==2*num_threads;});
-                // }
-                
+
                 queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
             } );
     }
@@ -229,7 +215,7 @@ TEST_CASE( "queue_locking_reference", "[queue locking reference]" ) {
     
     vector<int> queue;
 
-    unsigned int num_threads = std::thread::hardware_concurrency();
+    unsigned int num_threads = std::thread::hardware_concurrency()/2;
     
     size_t nums = num_threads * 3000000;
 

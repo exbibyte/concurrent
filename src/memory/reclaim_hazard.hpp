@@ -81,8 +81,8 @@ private:
     static constexpr size_t num_hazards = 10000; //recycles Rec's
     static constexpr size_t capacity_freelist = 10000; //recycles T's
     
-    // static constexpr bool can_recycle_rec = false;
-    static constexpr bool can_recycle_rec = true;
+    static constexpr bool can_recycle_rec = false;
+    // static constexpr bool can_recycle_rec = true;
     
     //free list for Records (queue_lockfree_simple<Rec<T>*>::Node)
     static queue_lockfree_simple<Rec<T>*> records_free;

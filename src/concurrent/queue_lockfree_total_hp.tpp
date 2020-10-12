@@ -67,16 +67,13 @@ bool queue_lockfree_total_impl<T, trait_reclamation::hp>::push_back_aux( Node * 
     while( true ){
         Node * tail = _tail.load( std::memory_order_relaxed );
 
+        if(!tail) return false;
+        
         hazard_guard<Node> guard = reclaim_hazard<Node>::add_hazard( tail );
 
         Node * tail_next = tail->_next.load( std::memory_order_relaxed );
 
         hazard_guard<Node> guard2 = reclaim_hazard<Node>::add_hazard( tail_next );
-
-        // if( !_tail.compare_exchange_weak( tail, tail, std::memory_order_relaxed ) ){
-        //     std::this_thread::yield();
-        //     continue;
-        // }
 
         if( nullptr == tail_next ){  //determine if thread has reached tail
             if( tail->_next.compare_exchange_weak( tail_next, new_node, std::memory_order_acq_rel ) ){ //add new node
@@ -98,6 +95,8 @@ std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::hp>::pop_front(
         
         Node * head = _head.load( std::memory_order_relaxed );
 
+        if(!head) return std::nullopt;
+        
         hazard_guard<Node> guard1 = reclaim_hazard<Node>::add_hazard( head );
         
         Node * tail = _tail.load( std::memory_order_relaxed );
@@ -105,11 +104,6 @@ std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::hp>::pop_front(
         Node * head_next = head->_next.load( std::memory_order_relaxed );
 
         hazard_guard<Node> guard2 = reclaim_hazard<Node>::add_hazard(head_next);
-        
-        // if(!_head.compare_exchange_weak( head, head, std::memory_order_relaxed )){
-        //     std::this_thread::yield();
-        //     continue;
-        // }
         
         if( head == tail ){
             if( nullptr == head_next ){//empty
