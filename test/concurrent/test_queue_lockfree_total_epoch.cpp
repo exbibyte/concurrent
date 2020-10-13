@@ -34,6 +34,8 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
         CHECK( 5 == *ret );
     
         queue_lockfree_total<int, trait_reclamation::epoch>::thread_deinit();
+        
+        reclaim_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
     }
     SECTION( "pop_empty" ) {
     
@@ -48,6 +50,8 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
         CHECK( !ret );
     
         queue_lockfree_total<int, trait_reclamation::epoch>::thread_deinit();
+
+        reclaim_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
     }
     SECTION( "multiple instances" ) {
     
@@ -77,6 +81,8 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
         CHECK( 0 == q2.size() );
     
         queue_lockfree_total<int, trait_reclamation::epoch>::thread_deinit();
+
+        reclaim_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
     }
 }
 
@@ -84,9 +90,9 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
     
     queue_lockfree_total<int, trait_reclamation::epoch> queue;
 
-    unsigned int num_threads = std::thread::hardware_concurrency();
+    unsigned int num_threads = std::thread::hardware_concurrency()/2;
     
-    size_t nums = num_threads * 1000000;
+    size_t nums = num_threads * 3000000;
     
     vector<int> retrieved( nums, 0 );
 
@@ -139,12 +145,14 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
     for( auto & i : threads ){
         i.join();
     }
-
+    
     auto t1 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> dur = t1 - t0;
     auto dur_ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur);
     std::cout << "duration: " << dur_ms.count() << " ms. rate: " <<  (double)nums/dur_ms.count()*1000.0 << " put-get/sec." << std::endl;
-    
+
+    reclaim_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
+        
     size_t count = queue.size();
 
     CHECK( 0 == count );

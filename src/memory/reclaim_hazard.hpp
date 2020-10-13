@@ -58,7 +58,7 @@ public:
 
     //should be called by the last thread remaining
     static void final_deinit();
-  
+    
 private:
 
     static void scan();
@@ -78,8 +78,8 @@ private:
     static thread_local size_t count_hazards_signaled;
   
     //constants for recycling sweeps
-    static constexpr size_t num_hazards = 10000; //recycles Rec's
-    static constexpr size_t capacity_freelist = 10000; //recycles T's
+    static constexpr size_t num_hazards = 1000; //recycles Rec's
+    static constexpr size_t capacity_freelist = 1000; //recycles T's
     
     static constexpr bool can_recycle_rec = false;
     // static constexpr bool can_recycle_rec = true;

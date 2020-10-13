@@ -54,8 +54,10 @@ void reclaim_epoch<T>::recycle(){
     uint64_t low = std::numeric_limits<uint64_t>::max();
 
     auto fn = [&](queue_lockfree_simple<std::atomic<uint64_t>*>::Node * i){
-        auto v = i->_val->load(std::memory_order_acquire);
-        low = std::min(low, v);
+        if(i && i->_val){
+            auto v = i->_val->load(std::memory_order_acquire);
+            low = std::min(low, v);
+        }
     };
 
     epoch_list.for_each(fn);
@@ -75,13 +77,13 @@ void reclaim_epoch<T>::recycle(){
 
 template<class T>
 void reclaim_epoch<T>::recycle_final(){
-
+    
     for(auto &[resource, epoch]: local_recycle){
         if(resource){
             delete resource;
         }
     }
-
+    
     local_recycle.clear();
 }
 
@@ -94,31 +96,41 @@ void reclaim_epoch<T>::register_thread(){
 template<class T>
 void reclaim_epoch<T>::unregister_thread(){
     //todo: item search and deletion from epoch_list
+
+    using NodeType = queue_lockfree_simple<std::atomic<uint64_t>*>::Node;
+    
+    auto fn = [&](NodeType * const i){
+        if(i->_val == &epoch_local){
+            i->_val = nullptr;
+        }
+    };
+    epoch_list.for_each(fn);
 }
 
 template<class T>
 int reclaim_epoch<T>::sync(){
-    //todo.. wait for all threads' epochs to become equal
-    while(true){
-        auto e = epoch_global.load();
-        epoch_local.store(e);
+    // //todo.. wait for all threads' epochs to become equal
+    // while(true){
+    //     auto e = epoch_global.load();
+    //     epoch_local.store(e);
 
-        bool valid = true;
-        auto fn = [&](auto i){
-            if(i != &epoch_local){
-                auto v = i->load();
-                if(v!=std::numeric_limits<uint64_t>::max() && v!=e){
-                    valid = false;
-                }
-            }
-        };
+    //     bool valid = true;
+    //     auto fn = [&](auto i){
+    //         if(i != &epoch_local){
+    //             auto v = i->load();
+    //             if(v!=std::numeric_limits<uint64_t>::max() && v!=e){
+    //                 valid = false;
+    //             }
+    //         }
+    //     };
 
-        epoch_list.for_each(fn);
+    //     epoch_list.for_each(fn);
         
-        if(valid)
-            return e;
-    }
-    assert(false); //should not come here
+    //     if(valid)
+    //         return e;
+    // }
+    // assert(false); //should not come here
+    assert(false && "unsupported");
     return -1;
 }
 
@@ -131,4 +143,9 @@ void reclaim_epoch<T>::deinit_thread(){
 template<class T>
 void reclaim_epoch<T>::stat(){
     std::cout << "recycled: " << count_recycled << ", in queue: " << local_recycle.size() << std::endl;
+}
+
+template<class T>
+void reclaim_epoch<T>::clear_epoch_list(){
+    epoch_list.clear();
 }

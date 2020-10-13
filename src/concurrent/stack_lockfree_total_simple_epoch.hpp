@@ -1,5 +1,5 @@
-#ifndef STACK_LF_TOTAL_SIMPLE_HP_HPP
-#define STACK_LF_TOTAL_SIMPLE_HP_HPP
+#ifndef STACK_LF_TOTAL_SIMPLE_EPOCH_HPP
+#define STACK_LF_TOTAL_SIMPLE_EPOCH_HPP
 
 #include <atomic>
 #include <cstddef>
@@ -8,7 +8,7 @@
 #include "IPool.hpp"
 
 template< class T>
-class stack_lockfree_total_simple_impl< T, trait_reclamation::hp > {
+class stack_lockfree_total_simple_impl< T, trait_reclamation::epoch > {
 public:
 
     static_assert(std::is_move_constructible<T>::value);
@@ -28,7 +28,7 @@ public:
               };
               stack_lockfree_total_simple_impl();
               ~stack_lockfree_total_simple_impl();
-  static void thread_init(){}
+  static void thread_init();
   static void thread_deinit();
          bool clear();
          bool empty() const;
@@ -44,6 +44,6 @@ private:
       _t_node _head;
 };
 
-#include "stack_lockfree_total_simple_hp.tpp"
+#include "stack_lockfree_total_simple_epoch.tpp"
 
 #endif

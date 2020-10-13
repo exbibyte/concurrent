@@ -29,11 +29,14 @@ public:
         epoch_guard(std::atomic<uint64_t> * f): flag(f){}
         ~epoch_guard(){
             // flag->store(EPOCH_DEFAULT, std::memory_order_release);
-            flag->store(EPOCH_DEFAULT, std::memory_order_relaxed);
+            done();
         }
         epoch_guard( epoch_guard && other ){
             flag = other.flag;
             other.flag = nullptr;
+        }
+        void done(){
+            flag->store(EPOCH_DEFAULT, std::memory_order_relaxed);
         }
         epoch_guard() = delete;
         epoch_guard(epoch_guard const &) = delete;
@@ -49,6 +52,9 @@ public:
     static void retire(T *);
 
     static void stat();
+
+    static void clear_epoch_list();
+
 private:
 
     static void recycle();

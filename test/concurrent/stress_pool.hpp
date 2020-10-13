@@ -14,13 +14,28 @@ public:
     static void stress_put_get_int( unsigned int num_threads, Pool & pool, bool force_push_get = false ){
         std::vector<std::thread> threads2( num_threads );
         std::vector<std::thread> threads( num_threads );    
-        int count_loop = 5;
-        int num_data_per_thread = 2000000;
+        int count_loop = 3;
+        int num_data_per_thread = 1000000;
         while( --count_loop >=0 ){
             size_t count;
             auto t0 = std::chrono::high_resolution_clock::now();
+            int sync = 0;
+            int sync2 = 0;
+            std::mutex m;
+            std::condition_variable cv;
             for( int i = 0; i < num_threads; ++i ){
                 threads[i] = std::thread( [ &, i ](){
+                        Pool::thread_init();
+                        {
+                            std::scoped_lock<std::mutex> l(m);
+                            ++sync;
+                        }
+                        cv.notify_all();
+                        {
+                            std::unique_lock<std::mutex> l(m);
+                            cv.wait(l, [&](){return sync>=2*num_threads;});
+                        }
+                        
                         for(int j=0; j<num_data_per_thread; ++j){
                             int val = j;
                             if(force_push_get){
@@ -33,11 +48,30 @@ public:
                                 pool.put( val );
                             }
                         }
+                        {
+                            std::scoped_lock<std::mutex> l(m);
+                            ++sync2;
+                        }
+                        cv.notify_all();
+                        {
+                            std::unique_lock<std::mutex> l(m);
+                            cv.wait(l, [&](){return sync2>=2*num_threads;});
+                        }
                         Pool::thread_deinit();
                     } );
             }
             for( int i = 0; i < num_threads; ++i ){
                 threads2[i] = std::thread( [&](){
+                        Pool::thread_init();
+                        {
+                            std::scoped_lock<std::mutex> l(m);
+                            ++sync;
+                        }
+                        cv.notify_all();
+                        {
+                            std::unique_lock<std::mutex> l(m);
+                            cv.wait(l, [&](){return sync>=2*num_threads;});
+                        }
                         int retries = 0;
                         for(int j=0; j<num_data_per_thread; ++j){
                             if(force_push_get){
@@ -52,6 +86,15 @@ public:
                             }else{
                                 auto pop_val = pool.get();
                             }
+                        }
+                        {
+                            std::scoped_lock<std::mutex> l(m);
+                            ++sync2;
+                        }
+                        cv.notify_all();
+                        {
+                            std::unique_lock<std::mutex> l(m);
+                            cv.wait(l, [&](){return sync2>=2*num_threads;});
                         }
                         Pool::thread_deinit();
                     } );

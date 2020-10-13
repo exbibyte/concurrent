@@ -30,6 +30,7 @@ public:
 
 
 #include "stack_lockfree_total_simple_hp.hpp"
+#include "stack_lockfree_total_simple_epoch.hpp"
 
 template< class T, trait_reclamation reclam >
 using stack_lockfree_total_simple = IPool< T, stack_lockfree_total_simple_impl,
