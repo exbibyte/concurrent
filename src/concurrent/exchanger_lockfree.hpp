@@ -24,6 +24,8 @@ public:
     using _t_status = std::atomic< exchanger_status >;
                exchanger_lockfree();
               ~exchanger_lockfree();
+               exchanger_lockfree( exchanger_lockfree const & ) = delete;
+               exchanger_lockfree & operator=( exchanger_lockfree const & ) = delete;
     _t_status _status;
        _t_val _val;
          bool exchange( T & item, long timeout_us ); //true if exchanged with another thread, false if timed out

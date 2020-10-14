@@ -13,10 +13,10 @@ template< class T >
 bool exchanger_lockfree<T>::exchange( T & item, long timeout_us ){
     T original = item;
     //try exchange with another thread via the exchanger node with specified timeout duration
-    std::chrono::high_resolution_clock::time_point time_enter = std::chrono::high_resolution_clock::now();
+    std::chrono::steady_clock::time_point time_enter = std::chrono::steady_clock::now();
     while(true){
         //test for timeout constraint
-        std::chrono::high_resolution_clock::time_point time_now = std::chrono::high_resolution_clock::now();
+        std::chrono::steady_clock::time_point time_now = std::chrono::steady_clock::now();
         auto diff = time_now - time_enter;
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
         if( duration > timeout_us ){
@@ -38,7 +38,7 @@ bool exchanger_lockfree<T>::exchange( T & item, long timeout_us ){
                     _status.store( waiting, std::memory_order_release );
                     //wait for 2nd thread to arrive
                     while(true){
-                        time_now = std::chrono::high_resolution_clock::now();
+                        time_now = std::chrono::steady_clock::now();
                         diff = time_now - time_enter;
                         duration = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
                         if( duration > timeout_us ){
@@ -104,7 +104,7 @@ bool exchanger_lockfree<T>::exchange( T & item, long timeout_us ){
                             item = original;
                             return false;
                         }
-                        time_now = std::chrono::high_resolution_clock::now();
+                        time_now = std::chrono::steady_clock::now();
                         diff = time_now - time_enter;
                         duration = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
                         if( duration > timeout_us ){

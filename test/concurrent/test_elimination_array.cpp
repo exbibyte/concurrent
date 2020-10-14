@@ -21,26 +21,26 @@ TEST_CASE( "elimination_array size 1", "[elimination_array]" ) {
     elim.set_timeout( timeout_us );
 
     function<void(bool*,int*)> f = [&](bool* b, int * a){
-	*b = elim.visit( *a, elim_size-1 );
+        *b = elim.visit( *a, 0, elim_size-1 );
     };
 
     int n= 100;
     vector<int> vals(n);
     int count = 0;
     for( auto & i : vals ){
-    	i = count;
-    	++count;
+        i = count;
+        ++count;
     }
     bool * rets = new bool[n];
     vector<thread> ts(n);
     for(size_t i = 0; i < n; ++i ){
-	bool * b = &rets[i];
+        bool * b = &rets[i];
         int * a = &vals[i];
-    	ts[i] = std::thread( f, b, a );
+        ts[i] = std::thread( f, b, a );
     }
 
     for(size_t i = 0; i < n; ++i ){
-    	ts[i].join();
+        ts[i].join();
     }
 
     std::cout << "threads joined." << std::endl;
@@ -48,15 +48,15 @@ TEST_CASE( "elimination_array size 1", "[elimination_array]" ) {
     vector<int> expected_vals(n);
     count = 0;
     for( auto & i : expected_vals ){
-    	i = count;
-    	++count;
+        i = count;
+        ++count;
     }
     //check each value has changed
     int count_eliminated = 0;
     for( size_t i = 0; i < n; ++i ){
-	if( rets[i] ){
-	    ++count_eliminated;
-	}
+        if( rets[i] ){
+            ++count_eliminated;
+        }
     }
 
     std::cout << "num thread: " << n << ", size elimnation array: " << elim_size << ", percent eliminated: " << (double)count_eliminated / n * 100.0 << std::endl;
@@ -76,26 +76,26 @@ TEST_CASE( "elimination_array visit range exceed size", "[elimination_array]" ) 
     elim.set_timeout( timeout_us );
 
     function<void(bool*,int*)> f = [&](bool* b, int * a){
-	*b = elim.visit( *a, 5 );
+        *b = elim.visit( *a, 0, 5 );
     };
 
     int n= 10;
     vector<int> vals(n);
     int count = 0;
     for( auto & i : vals ){
-    	i = count;
-    	++count;
+        i = count;
+        ++count;
     }
     bool * rets = new bool[n];
     vector<thread> ts(n);
     for(size_t i = 0; i < n; ++i ){
-	bool * b = &rets[i];
+        bool * b = &rets[i];
         int * a = &vals[i];
-    	ts[i] = std::thread( f, b, a );
+        ts[i] = std::thread( f, b, a );
     }
 
     for(size_t i = 0; i < n; ++i ){
-    	ts[i].join();
+        ts[i].join();
     }
 
     std::cout << "threads joined." << std::endl;
@@ -103,15 +103,15 @@ TEST_CASE( "elimination_array visit range exceed size", "[elimination_array]" ) 
     vector<int> expected_vals(n);
     count = 0;
     for( auto & i : expected_vals ){
-    	i = count;
-    	++count;
+        i = count;
+        ++count;
     }
     //check each value has changed
     int count_eliminated = 0;
     for( size_t i = 0; i < n; ++i ){
-	if( rets[i] ){
-	    ++count_eliminated;
-	}
+        if( rets[i] ){
+            ++count_eliminated;
+        }
     }
 
     std::cout << "num thread: " << n << ", size elimnation array: " << elim_size << ", percent eliminated: " << (double)count_eliminated / n * 100.0 << std::endl;

@@ -19,7 +19,7 @@ TEST_CASE( "exchanger_lockfree", "[exchanger]" ) {
     long timeout_us = 100000;
 
     function<void(bool*,int*)> f = [&](bool* b, int * a){
-	*b = ex.exchange( *a, timeout_us );
+        *b = ex.exchange( *a, timeout_us );
     };
 
     int n= 200;
@@ -35,7 +35,7 @@ TEST_CASE( "exchanger_lockfree", "[exchanger]" ) {
     auto start = std::chrono::high_resolution_clock::now();
     
     for(size_t i = 0; i < n; ++i ){
-	bool * b = &rets[i];
+        bool * b = &rets[i];
         int * a = &vals[i];
     	ts[i] = std::thread( f, b, a );
     }
@@ -72,7 +72,7 @@ TEST_CASE( "exchanger_lockfree timeout", "[exchanger]" ) {
     long timeout_us = 3'000'000;
 
     function<void(bool*,int*)> f = [&](bool* b, int * a){
-	*b = ex.exchange( *a, timeout_us );
+        *b = ex.exchange( *a, timeout_us );
     };
 
     int n= 1;
@@ -85,7 +85,7 @@ TEST_CASE( "exchanger_lockfree timeout", "[exchanger]" ) {
     bool * rets = new bool[n];
     vector<thread> ts(n);
     for(size_t i = 0; i < n; ++i ){
-	bool * b = &rets[i];
+        bool * b = &rets[i];
         int * a = &vals[i];
     	ts[i] = std::thread( f, b, a );
     }
