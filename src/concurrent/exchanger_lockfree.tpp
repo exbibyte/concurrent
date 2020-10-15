@@ -9,73 +9,91 @@ exchanger_lockfree<T>::exchanger_lockfree(){
 template< class T >
 exchanger_lockfree<T>::~exchanger_lockfree(){
 }
+
+bool is_timeout(std::chrono::steady_clock::time_point start, long timeout_us ){
+    std::chrono::steady_clock::time_point time_now = std::chrono::steady_clock::now();
+    auto diff = time_now - start;
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
+    return duration > timeout_us;
+}
+
 template< class T >
 bool exchanger_lockfree<T>::exchange( T & item, long timeout_us ){
-    T original = item;
+    // T original = item;
     //try exchange with another thread via the exchanger node with specified timeout duration
     std::chrono::steady_clock::time_point time_enter = std::chrono::steady_clock::now();
     while(true){
         //test for timeout constraint
-        std::chrono::steady_clock::time_point time_now = std::chrono::steady_clock::now();
-        auto diff = time_now - time_enter;
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
-        if( duration > timeout_us ){
-#ifdef DEBUG_VERBOSE
-            std::cout << "entering: timeout segment 1." << std::endl;
-#endif
-            item = original;
+        if(is_timeout(time_enter, timeout_us)){
+            //item = original;
             return false;
         }
 
-        switch( _status.load( std::memory_order_acquire ) ){
+        switch( _status.load( std::memory_order_relaxed ) ){
         case exchanger_status::EMPTY:
             {
                 exchanger_status expected_empty = exchanger_status::EMPTY;
-                if( _status.compare_exchange_weak( expected_empty, exchanger_status::EMPTY_2, std::memory_order_acq_rel ) ){
+                if( _status.compare_exchange_strong( expected_empty, exchanger_status::EMPTY_2 ) ){
                     //at this point, current active thread is depositing value to be exchanged with 2nd arriving thread
-                    exchanger_status waiting = exchanger_status::WAITING;
-                    _val = item;
-                    _status.store( waiting, std::memory_order_release );
-                    //wait for 2nd thread to arrive
-                    while(true){
-                        time_now = std::chrono::steady_clock::now();
-                        diff = time_now - time_enter;
-                        duration = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
-                        if( duration > timeout_us ){
-                            break;
+                    _val = std::move(item);
+                    
+                    exchanger_status empty_2 = exchanger_status::EMPTY_2;
+
+                    if(_status.compare_exchange_strong( empty_2, exchanger_status::WAITING)){
+                    
+                        //wait for 2nd thread to arrive
+                        while(true){
+
+                            if(is_timeout(time_enter, timeout_us)){
+                                break;
+                            }
+                        
+                            //wait for partner thread to exchange
+                            exchanger_status expected_exchanging_2 = exchanger_status::EXCHANGING_2;
+                            if( _status.compare_exchange_strong( expected_exchanging_2, exchanger_status::EXCHANGING_3 ) ){
+                                //active thread received deposit from 2nd thread
+                                item = std::move(_val);
+                                exchanger_status expected_exchanging_3 = exchanger_status::EXCHANGING_3;
+                                if(_status.compare_exchange_strong( expected_exchanging_3, exchanger_status::COMPLETE)){}
+                            }
+                        
+                            exchanger_status complete2_status = exchanger_status::COMPLETE_2;
+                            if(_status.compare_exchange_strong( complete2_status, exchanger_status::EMPTY)){
+                                return true;
+                            }
                         }
-                        //wait for partner thread to exchange
-                        exchanger_status expected_exchanging_2 = exchanger_status::EXCHANGING_2;
-                        if( _status.compare_exchange_weak( expected_exchanging_2, exchanger_status::EXCHANGING_3, std::memory_order_acq_rel ) ){
-                            //active thread received deposit from 2nd thread
-                            exchanger_status complete = exchanger_status::COMPLETE;
-                            item = _val;
-                            _status.store( complete, std::memory_order_release );
-#ifdef DEBUG_VERBOSE
-                            std::cout << "entering: exchanged with partner segment 1." << std::endl;
-#endif
+
+                        exchanger_status complete2_status = exchanger_status::COMPLETE_2;
+                        if(_status.compare_exchange_strong( complete2_status, exchanger_status::EMPTY)){
                             return true;
+                        }else{
+                            exchanger_status s_empty2 = exchanger_status::EMPTY_2;
+                            exchanger_status s_waiting = exchanger_status::WAITING;
+                            exchanger_status s_exchanging = exchanger_status::EXCHANGING;
+                            exchanger_status s_exchanging2 = exchanger_status::EXCHANGING_2;
+                            exchanger_status s_exchanging3 = exchanger_status::EXCHANGING_3;
+                            exchanger_status s_complete = exchanger_status::COMPLETE;
+                            if(_status.compare_exchange_strong( s_empty2, exchanger_status::EMPTY)){
+                                return false;
+                            }
+                            else if(_status.compare_exchange_strong( s_waiting, exchanger_status::EMPTY)){
+                                return false;
+                            }
+                            else if(_status.compare_exchange_strong( s_exchanging, exchanger_status::EMPTY)){
+                                return false;
+                            }
+                            else if(_status.compare_exchange_strong( s_exchanging2, exchanger_status::EMPTY)){
+                                return false;
+                            }
+                            else if(_status.compare_exchange_strong( s_exchanging3, exchanger_status::EMPTY)){
+                                return false;
+                            }
+                            else if(_status.compare_exchange_strong( s_complete, exchanger_status::EMPTY)){
+                                return false;
+                            }else{
+                                return true;
+                            }
                         }
-                    }
-                    exchanger_status expected_exchanging_2 = exchanger_status::EXCHANGING_2;
-                    if( _status.compare_exchange_weak( expected_exchanging_2, exchanger_status::EXCHANGING_3, std::memory_order_acq_rel ) ){
-                        //active thread received deposit from 2nd thread
-                        exchanger_status complete = exchanger_status::COMPLETE;
-                        item = _val;
-                        _status.store( complete, std::memory_order_release );
-#ifdef DEBUG_VERBOSE
-                        std::cout << "entering: exchanged with partner segment 1." << std::endl;
-#endif
-                        return true;
-                    }else{
-                        //active thread times out and gives up resource
-#ifdef DEBUG_VERBOSE
-                        std::cout << "entering: timeout segment 2." << std::endl;
-#endif
-                        exchanger_status abort = exchanger_status::ABORT;
-                        _status.store( abort, std::memory_order_release );
-                        item = original;
-                        return false;
                     }
                 }
             }
@@ -83,53 +101,46 @@ bool exchanger_lockfree<T>::exchange( T & item, long timeout_us ){
         case exchanger_status::WAITING:
             {
                 exchanger_status expected = exchanger_status::WAITING;
-                if( _status.compare_exchange_weak( expected, exchanger_status::EXCHANGING, std::memory_order_acq_rel ) ){
+                if( _status.compare_exchange_strong( expected, exchanger_status::EXCHANGING ) ){
                     //at this point, this is the 2nd thread arriving, exchanging with an active thread
-                    exchanger_status reset = exchanger_status::EMPTY;
-                    exchanger_status exchanging_2 = exchanger_status::EXCHANGING_2;
-                    T val_exchanged = _val;
-                    _val = item;
-                    item = val_exchanged;
-                    _status.store( exchanging_2, std::memory_order_release ); //signal exchange partner that object has been exchanged
-                    exchanger_status final_status = _status.load( std::memory_order_acquire );
-                    while( true ){
-                        if( exchanger_status::COMPLETE == final_status ){
-                            _status.store( reset, std::memory_order_release );
-#ifdef DEBUG_VERBOSE
-                            std::cout << "entering: exchanged with partner segment 2." << std::endl;
-#endif
-                            return true;
-                        }else if( exchanger_status::ABORT == final_status ){
-                            _status.store( reset, std::memory_order_release );
-                            item = original;
-                            return false;
+                    T val_exchanged(std::move(_val));
+                    _val = std::move(item);
+                    item = std::move(val_exchanged);
+
+                    exchanger_status expected_exchanging = exchanger_status::EXCHANGING;
+                    if(_status.compare_exchange_strong( expected_exchanging, exchanger_status::EXCHANGING_2)){
+                        //signal exchange partner that object has been exchanged
+
+                        while(true){
+
+                            if( exchanger_status::EMPTY == _status.load()){
+                                break;
+                            }
+
+                            if(is_timeout(time_enter, timeout_us)){
+                                break;
+                            }
+                            
+                            exchanger_status complete_status = exchanger_status::COMPLETE;
+                            if(_status.compare_exchange_strong( complete_status, exchanger_status::COMPLETE_2)){
+                                return true;
+                            }
+                            
+                            std::this_thread::yield();
                         }
-                        time_now = std::chrono::steady_clock::now();
-                        diff = time_now - time_enter;
-                        duration = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
-                        if( duration > timeout_us ){
-                            break;
-                        }
-                        final_status = _status.load( std::memory_order_acquire );
                     }
-                    _status.store( reset, std::memory_order_release );
-                    item = original;
+                    
                     return false;
                 }
             }
             break;
-        case exchanger_status::ABORT:
-            {
-                exchanger_status aborted = exchanger_status::ABORT;
-                _status.compare_exchange_weak( aborted, exchanger_status::EMPTY, std::memory_order_acq_rel );
-                //retry
-            }
-            break;
         default:
-            //retry
+            {
+                //retry
+                std::this_thread::yield();
+            }
             break;
         }
     }
-    item = original;
     return false;
 }

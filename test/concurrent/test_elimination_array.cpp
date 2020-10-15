@@ -16,12 +16,12 @@ using namespace std;
 
 TEST_CASE( "elimination_array size 1", "[elimination_array]" ) {
     constexpr size_t elim_size = 1;
-    elimination_array<int, elim_size> elim;
+    elimination_array<int> elim(elim_size);
     long timeout_us = 10000;
     elim.set_timeout( timeout_us );
 
     function<void(bool*,int*)> f = [&](bool* b, int * a){
-        *b = elim.visit( *a, 0, elim_size-1 );
+        *b = elim.visit( *a, 0, elim_size );
     };
 
     int n= 100;
@@ -71,7 +71,7 @@ TEST_CASE( "elimination_array size 1", "[elimination_array]" ) {
 
 TEST_CASE( "elimination_array visit range exceed size", "[elimination_array]" ) {
     constexpr size_t elim_size = 1;
-    elimination_array<int, elim_size> elim;
+    elimination_array<int> elim(elim_size);
     long timeout_us = 10000;
     elim.set_timeout( timeout_us );
 

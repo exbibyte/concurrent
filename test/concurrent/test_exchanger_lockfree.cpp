@@ -95,6 +95,6 @@ TEST_CASE( "exchanger_lockfree timeout", "[exchanger]" ) {
     }
     CHECK( false == rets[0] );
     auto stat = ex._status.load();
-    CHECK( exchanger_status::ABORT == stat );
+    CHECK( exchanger_status::EMPTY == stat );
     std::cout << "threads joined." << std::endl;
 }

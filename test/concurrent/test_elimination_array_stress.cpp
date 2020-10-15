@@ -16,7 +16,7 @@ using namespace std;
 
 template< typename ValType, size_t ElimSize >
 void stress( long timeout_us, size_t visit_range, size_t num_threads ){
-    elimination_array<ValType, ElimSize> elim;
+    elimination_array<ValType> elim(ElimSize);
     elim.set_timeout( timeout_us );
 
     function<void(bool*,int*)> f = [&](bool* b, int * a){
@@ -61,6 +61,9 @@ void stress( long timeout_us, size_t visit_range, size_t num_threads ){
 
     for(auto [k,v]: freq){
         assert(k>=0 && k <= num_threads);
+        if(v!=1){
+            std::cout << k << ": " << v << std::endl;
+        }
         assert(v==1);
     }
 
