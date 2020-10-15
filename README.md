@@ -25,18 +25,18 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
 
 # work in progress
   - implement safe memory reclamation strategies
-    - hazard pointer (done)
-    - epoch (in progress)
-	- quiescent state (in progress)
+    - hazard pointer (simplify interface/usage)
+    - epoch (simplify interface/usage)
+	- quiescent state (todo)
 	- hyaline (todo)
   - add working memory reclamation strategies in concurrent datastructures (in progress)
 
 # currently supported implementations with safe memory reclamation:
   - lockfree queue
-    - queue_lockfree_total with hazard pointer
-    - queue_lockfree_total with epoch based reclamation
+    - queue_lockfree_total with hazard pointer / epoch based reclamation
   - lockfree stack
-    - stack_lockfree_total_simple with hazard pointer
+    - stack_lockfree_total_simple with hazard pointer / epoch based reclamation
+    - stack_lockfree_elim with hazard pointer
 
 # other notes
   - currently uses C++1z
