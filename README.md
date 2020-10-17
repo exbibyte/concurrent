@@ -97,4 +97,11 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
     for( auto & i : threads2 ){
         i.join();
     }
-```    
+```
+    - lockfree stack w/ hazard pointer:
+```
+#include "stack_lockfree_total_simple.hpp"
+    //...
+    using container_type = stack_lockfree_total_simple<int, trait_reclamation::hp>;
+    //... same as above
+```  
