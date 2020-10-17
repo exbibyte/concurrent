@@ -4,6 +4,7 @@
 #include "IPool.hpp"
 #include "stack_lockfree_total_simple.hpp"
 #include "elimination_array.hpp"
+#include "reclam_hazard.hpp"
 
 #include <atomic>
 
@@ -15,7 +16,8 @@ public:
     using maybe = std::optional<T>;
     using internal_stack = stack_lockfree_total_simple_impl<T, trait_reclamation::hp>;
     using internal_node = typename internal_stack::Node;
-    
+    using mem_reclam = reclam_hazard<internal_node>;
+
               stack_lockfree_elim_impl(size_t array_size = 2) : _elim_array(array_size) {}
               ~stack_lockfree_elim_impl(){}
   static void thread_init(){ internal_stack::thread_init(); }

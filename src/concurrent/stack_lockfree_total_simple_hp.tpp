@@ -1,5 +1,3 @@
-#include "reclaim_hazard.hpp"
-
 template< typename T >
 stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::stack_lockfree_total_simple_impl(){
     _head.store( nullptr );
@@ -11,15 +9,15 @@ stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::~stack_lockfree_tota
 
     assert( _head.load() == nullptr );
     
-    reclaim_hazard<Node>::final_deinit();
+    reclam_hazard<Node>::final_deinit();
 }
 template< typename T>
 void stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::thread_deinit(){
-    reclaim_hazard<Node>::thread_deinit();
+    reclam_hazard<Node>::thread_deinit();
 }
 template< typename T >
 bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::push( T const & val ){
-    if(auto existing = reclaim_hazard<Node>::new_from_recycled()){
+    if(auto existing = reclam_hazard<Node>::new_from_recycled()){
         existing->_val = val;
         existing->_next = nullptr;
         return push_aux(existing);
@@ -30,7 +28,7 @@ bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::push( T const &
 }
 template< typename T >
 bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::push( T && val ){
-    if(auto existing = reclaim_hazard<Node>::new_from_recycled()){
+    if(auto existing = reclam_hazard<Node>::new_from_recycled()){
         existing->_val = std::move(val);
         existing->_next = nullptr;
         return push_aux(existing);
@@ -42,7 +40,7 @@ bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::push( T && val 
 template< typename T >
 bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::try_push( T const & val ){
     Node * n;
-    if(auto existing = reclaim_hazard<Node>::new_from_recycled()){
+    if(auto existing = reclam_hazard<Node>::new_from_recycled()){
         existing->_val = val;
         existing->_next = nullptr;
         n = existing;
@@ -53,14 +51,14 @@ bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::try_push( T con
     if(try_push_aux(n)){
         return true;
     }else{
-        reclaim_hazard<Node>::retire_hazard(n);
+        reclam_hazard<Node>::retire_hazard(n);
         return false;
     }
 }
 template< typename T >
 bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::try_push( T && val ){
     Node * n;
-    if(auto existing = reclaim_hazard<Node>::new_from_recycled()){
+    if(auto existing = reclam_hazard<Node>::new_from_recycled()){
         existing->_val = std::move(val);
         existing->_next = nullptr;
         n = existing;
@@ -71,20 +69,20 @@ bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::try_push( T && 
     if(try_push_aux(n)){
         return true;
     }else{
-        reclaim_hazard<Node>::retire_hazard(n);
+        reclam_hazard<Node>::retire_hazard(n);
         return false;
     }
 }
 template< typename T >
 bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::push_aux( Node * new_node ){
 
-    auto guard2 = reclaim_hazard<Node>::add_hazard( new_node );
+    auto guard2 = reclam_hazard<Node>::add_hazard( new_node );
     
     while(true){
 
         Node * head = _head.load( std::memory_order_acq_rel );
         
-        auto guard = reclaim_hazard<Node>::add_hazard( head );
+        auto guard = reclam_hazard<Node>::add_hazard( head );
         
         new_node->_next = head;
 
@@ -101,11 +99,11 @@ bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::push_aux( Node 
 template< typename T >
 bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::try_push_aux( Node * new_node ){
 
-    auto guard2 = reclaim_hazard<Node>::add_hazard( new_node );
+    auto guard2 = reclam_hazard<Node>::add_hazard( new_node );
 
     Node * head = _head.load( std::memory_order_acq_rel );
         
-    auto guard = reclaim_hazard<Node>::add_hazard( head );
+    auto guard = reclam_hazard<Node>::add_hazard( head );
         
     new_node->_next = head;
 
@@ -123,7 +121,7 @@ std::optional<T> stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::pop
 
         Node * head = _head.load( std::memory_order_acquire );
 
-        auto guard = reclaim_hazard<Node>::add_hazard( head );
+        auto guard = reclam_hazard<Node>::add_hazard( head );
 
         if(!head){
             return std::nullopt;
@@ -135,7 +133,7 @@ std::optional<T> stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::pop
 
             T val(std::move(head->_val));
     
-            reclaim_hazard<Node>::retire_hazard(head);
+            reclam_hazard<Node>::retire_hazard(head);
 
             return std::optional<T>(val);
     
@@ -152,7 +150,7 @@ std::optional<T> stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::try
 
     Node * head = _head.load( std::memory_order_acquire );
 
-    auto guard = reclaim_hazard<Node>::add_hazard( head );
+    auto guard = reclam_hazard<Node>::add_hazard( head );
 
     if(!head){
         return std::nullopt;
@@ -164,7 +162,7 @@ std::optional<T> stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::try
 
         T val(std::move(head->_val));
     
-        reclaim_hazard<Node>::retire_hazard(head);
+        reclam_hazard<Node>::retire_hazard(head);
 
         return std::optional<T>(val);
     

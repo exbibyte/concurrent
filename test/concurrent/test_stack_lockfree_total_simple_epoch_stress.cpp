@@ -13,10 +13,11 @@
 using namespace std;
 
 TEST_CASE( "stack_lockfree_total_simple_epoch stress", "[stress]" ) {
-    stack_lockfree_total_simple<int, trait_reclamation::epoch> p;
+    using container_type = stack_lockfree_total_simple<int, trait_reclamation::epoch>;
+    container_type p;
     unsigned int num_threads = std::thread::hardware_concurrency()/2;
     bool force_push_get = true;
-    stress_pool::stress_put_get_int( num_threads, p, force_push_get );
-    reclaim_epoch<stack_lockfree_total_simple<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
+    stress_pool::stress_put_get_int<container_type, container_type::mem_reclam>( num_threads, p, force_push_get );
+    reclam_epoch<container_type::Node>::clear_epoch_list();
     
 }

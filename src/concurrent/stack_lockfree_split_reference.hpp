@@ -7,6 +7,7 @@
 #include <mutex>
 
 #include "IPool.hpp"
+#include "reclam_none.hpp"
 
 //todo: specialize for reclamation
 
@@ -23,6 +24,7 @@ public:
         Node * _node;
                NodeExternal() : _node( nullptr ), _count_external(0) {}
     };
+    using mem_reclam = reclam_none;    
     class Node {
     public:
         std::atomic<int> _count_internal;
@@ -32,7 +34,9 @@ public:
                          Node( T && val ) : _val( val ), _next( nullptr ), _count_internal(0) {}
     };
     
-                                  stack_lockfree_split_reference_impl() : _head( nullptr ) {}
+                                  stack_lockfree_split_reference_impl() : _head( nullptr ) {
+                                      assert(false && "unsupported reclamation strategy");
+                                  }
                       static void thread_init(){}
                       static void thread_deinit(){}
                            size_t size() const; //not guaranteed to be consistent when threads are accessing stack

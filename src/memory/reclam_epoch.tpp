@@ -1,28 +1,28 @@
 #include <iostream>
 
 template<class T>
-thread_local std::atomic<uint64_t> reclaim_epoch<T>::epoch_local{std::numeric_limits<uint64_t>::max()};
+thread_local std::atomic<uint64_t> reclam_epoch<T>::epoch_local{std::numeric_limits<uint64_t>::max()};
 
 template<class T>
-std::atomic<uint64_t> reclaim_epoch<T>::freq_epoch{0};
+std::atomic<uint64_t> reclam_epoch<T>::freq_epoch{0};
 
 template<class T>
-thread_local int reclaim_epoch<T>::local_freq_recycle{0};
+thread_local int reclam_epoch<T>::local_freq_recycle{0};
 
 template<class T>
-thread_local std::vector<std::pair<T*,uint64_t>> reclaim_epoch<T>::local_recycle {};
+thread_local std::vector<std::pair<T*,uint64_t>> reclam_epoch<T>::local_recycle {};
 
 template<class T>
-thread_local int reclaim_epoch<T>::count_recycled{0};
+thread_local int reclam_epoch<T>::count_recycled{0};
 
 template<class T>
-std::atomic<uint64_t> reclaim_epoch<T>::epoch_global{0};
+std::atomic<uint64_t> reclam_epoch<T>::epoch_global{0};
 
 template<class T>
-queue_lockfree_simple<std::atomic<uint64_t>*> reclaim_epoch<T>::epoch_list;
+queue_lockfree_simple<std::atomic<uint64_t>*> reclam_epoch<T>::epoch_list;
 
 template<class T>
-void reclaim_epoch<T>::retire(T * resource){
+void reclam_epoch<T>::retire(T * resource){
     
     auto e = epoch_global.load(std::memory_order_acquire);
     
@@ -41,14 +41,14 @@ void reclaim_epoch<T>::retire(T * resource){
 }
 
 template<class T>
-typename reclaim_epoch<T>::epoch_guard reclaim_epoch<T>::critical_section(){    
+typename reclam_epoch<T>::epoch_guard reclam_epoch<T>::critical_section(){    
     uint8_t e = epoch_global.load(std::memory_order_acquire);
     epoch_local.store(e, std::memory_order_relaxed);
     return epoch_guard( &epoch_local );
 }
 
 template<class T>
-void reclaim_epoch<T>::recycle(){
+void reclam_epoch<T>::recycle(){
     
     //check other threads' epochs and attempt reycle
     uint64_t low = std::numeric_limits<uint64_t>::max();
@@ -76,7 +76,7 @@ void reclaim_epoch<T>::recycle(){
 }
 
 template<class T>
-void reclaim_epoch<T>::recycle_final(){
+void reclam_epoch<T>::recycle_final(){
     
     for(auto &[resource, epoch]: local_recycle){
         if(resource){
@@ -88,13 +88,13 @@ void reclaim_epoch<T>::recycle_final(){
 }
 
 template<class T>
-void reclaim_epoch<T>::register_thread(){
+void reclam_epoch<T>::register_thread(){
     using NodeType = queue_lockfree_simple<std::atomic<uint64_t>*>::Node;
     epoch_list.push_back( new NodeType(&epoch_local) );
 }
 
 template<class T>
-void reclaim_epoch<T>::unregister_thread(){
+void reclam_epoch<T>::unregister_thread(){
     //todo: item search and deletion from epoch_list
 
     using NodeType = queue_lockfree_simple<std::atomic<uint64_t>*>::Node;
@@ -108,7 +108,7 @@ void reclaim_epoch<T>::unregister_thread(){
 }
 
 template<class T>
-int reclaim_epoch<T>::sync(){
+int reclam_epoch<T>::sync(){
     // //todo.. wait for all threads' epochs to become equal
     // while(true){
     //     auto e = epoch_global.load();
@@ -135,17 +135,17 @@ int reclaim_epoch<T>::sync(){
 }
 
 template<class T>
-void reclaim_epoch<T>::deinit_thread(){
+void reclam_epoch<T>::deinit_thread(){
     ///assumes threads have finished
     recycle_final();
 }
 
 template<class T>
-void reclaim_epoch<T>::stat(){
+void reclam_epoch<T>::stat(){
     std::cout << "recycled: " << count_recycled << ", in queue: " << local_recycle.size() << std::endl;
 }
 
 template<class T>
-void reclaim_epoch<T>::clear_epoch_list(){
+void reclam_epoch<T>::clear_epoch_list(){
     epoch_list.clear();
 }

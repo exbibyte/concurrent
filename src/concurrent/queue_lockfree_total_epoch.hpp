@@ -1,6 +1,8 @@
 #ifndef QUEUE_LF_TOTAL_EPOCH_HPP
 #define QUEUE_LF_TOTAL_EPOCH_HPP
 
+#include "reclam_epoch.hpp"
+
 template< class T >
 class queue_lockfree_total_impl< T, trait_reclamation::epoch > {
 public:
@@ -20,7 +22,8 @@ public:
                              Node( _t_val const & val ): _val(val), _next( nullptr ) {}
                              Node( _t_val && val ): _val(val), _next( nullptr ) {}
               };
-
+    using mem_reclam = reclam_epoch<Node>;
+    
                queue_lockfree_total_impl();
                ~queue_lockfree_total_impl();
    static void thread_init(); //currently requires all participating threads to sync after this call

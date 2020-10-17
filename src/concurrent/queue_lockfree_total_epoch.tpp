@@ -1,7 +1,7 @@
 //specialization for epoch based reclamation
 
 #include <iostream>
-#include "reclaim_epoch.hpp"
+#include "reclam_epoch.hpp"
 
 template< typename T >
 queue_lockfree_total_impl<T, trait_reclamation::epoch>::queue_lockfree_total_impl(){
@@ -33,13 +33,13 @@ queue_lockfree_total_impl<T, trait_reclamation::epoch>::~queue_lockfree_total_im
 template< typename T >
 void queue_lockfree_total_impl<T, trait_reclamation::epoch>::thread_init(){
     ///currently requires participating threads register and wait until all threads are registered
-    reclaim_epoch<Node>::register_thread();
+    reclam_epoch<Node>::register_thread();
 }
 
 template< typename T >
 void queue_lockfree_total_impl<T, trait_reclamation::epoch>::thread_deinit(){
     ///currently requires all participating threads to be finished with their tasks before calling this
-    reclaim_epoch<Node>::deinit_thread();
+    reclam_epoch<Node>::deinit_thread();
 }
 
 template< typename T >
@@ -58,7 +58,7 @@ template< typename T >
 bool queue_lockfree_total_impl<T, trait_reclamation::epoch>::push_back_aux( Node * new_node ){ //push item to the tail
     while( true ){
 
-        auto guard = reclaim_epoch<Node>::critical_section();
+        auto guard = reclam_epoch<Node>::critical_section();
         
         Node * tail = _tail.load( std::memory_order_relaxed );
     
@@ -87,7 +87,7 @@ template< typename T >
 std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::epoch>::pop_front(){ //obtain item from the head
     while( true ){
 
-        auto guard = reclaim_epoch<Node>::critical_section();
+        auto guard = reclam_epoch<Node>::critical_section();
         
         Node * head = _head.load( std::memory_order_relaxed );
     
@@ -121,7 +121,7 @@ std::optional<T> queue_lockfree_total_impl<T, trait_reclamation::epoch>::pop_fro
             if( _head.compare_exchange_weak( head, head_next, std::memory_order_relaxed ) ){ //try add new item
                 //thread suceeds
                 T val(head_next->_val);
-                reclaim_epoch<Node>::retire(head);
+                reclam_epoch<Node>::retire(head);
                 return std::optional<T>(val);
             }
         }

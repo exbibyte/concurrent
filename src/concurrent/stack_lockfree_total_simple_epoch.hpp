@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "IPool.hpp"
+#include "reclam_epoch.hpp"
 
 template< class T>
 class stack_lockfree_total_simple_impl< T, trait_reclamation::epoch > {
@@ -26,6 +27,7 @@ public:
                             Node( T const & val ) : _val( val ), _next( nullptr ) {}
                             Node( T && val ) : _val( val ), _next( nullptr ) {}
               };
+    using mem_reclam = reclam_epoch<Node>;
               stack_lockfree_total_simple_impl();
               ~stack_lockfree_total_simple_impl();
   static void thread_init();

@@ -8,48 +8,64 @@
 
 #include "catch.hpp"
 #include "stack_lockfree_total_simple.hpp"
+#include "threadwrap.hpp"
 
 using namespace std;
 
+using container_type = stack_lockfree_total_simple<int, trait_reclamation::hp>;
+
 TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) { 
 
-    stack_lockfree_total_simple<int, trait_reclamation::hp> stack;
-
+    container_type stack;
+        
     SECTION( "put" ) {
-        size_t count = stack.size();
-        CHECK( 0 == count );
-        int num = 5;
-        stack.put(num);
-        count = stack.size();
-        CHECK( 1 == count );
 
-        SECTION( "get" ) {
-            auto ret = stack.get();
-            count = stack.size();
+        auto f = [&](){
+            
+            size_t count = stack.size();
             CHECK( 0 == count );
-            CHECK( ret );
-            CHECK( 5 == *ret );
-        }
+            int num = 5;
+            stack.put(num);
+            count = stack.size();
+            CHECK( 1 == count );
+        
+            SECTION( "get" ) {
+                auto ret = stack.get();
+                count = stack.size();
+                CHECK( 0 == count );
+                CHECK( ret );
+                CHECK( 5 == *ret );
+            }
+
+        };
+
+        threadwrap::this_thread_run<container_type::mem_reclam>(f);
     }    
 
     SECTION( "get empty" ) {
-        size_t count;
-        auto ret = stack.get();
-        count = stack.size();
-        CHECK( 0 == count );
-        CHECK( !ret );
+
+        auto f = [&](){
+            
+            size_t count;
+            auto ret = stack.get();
+            count = stack.size();
+            CHECK( 0 == count );
+            CHECK( !ret );
+
+        };
+        
+        threadwrap::this_thread_run<container_type::mem_reclam>(f);
     }
 
     SECTION( "multi-thread put" ) {
         size_t count;
         unsigned int num_threads = 10;
-        vector<thread> threads( num_threads );
+        vector<threadwrap> threads( num_threads );
         for( int i = 0; i < num_threads; ++i ){
-            threads[i] = std::thread( [ &stack, i ](){
+            threads[i] = threadwrap( [ &stack, i ](){
                     int num = i;
                     stack.put( num );
-                    stack_lockfree_total_simple<int, trait_reclamation::hp>::thread_deinit();
-                } );
+                }, identity<container_type::mem_reclam>() );
         }
         for( auto & i : threads ){
             i.join();
@@ -60,15 +76,14 @@ TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) {
         SECTION( "multi-thread get" ) {
             vector<int> vals_retrieve(num_threads, 0);
             for( auto & i : threads ){
-                i = std::thread( [&](){
+                i = threadwrap( [&](){
                         while(true){//force retrieval
                             if( auto ret = stack.get() ){
                                 vals_retrieve[*ret]++;
                                 break;
                             }    
                         }
-                        stack_lockfree_total_simple<int, trait_reclamation::hp>::thread_deinit();
-                    } );
+                    }, identity<container_type::mem_reclam>() );
             }
             for( auto & i : threads ){
                 i.join();
@@ -80,7 +95,4 @@ TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) {
             }
         }
     }
-
-    stack_lockfree_total_simple<int, trait_reclamation::hp>::thread_deinit();
-    
 }

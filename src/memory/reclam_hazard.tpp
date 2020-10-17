@@ -6,37 +6,37 @@
 #include <iostream>
 
 template<typename T>
-thread_local std::vector<T*> reclaim_hazard<T>::hazards {};
+thread_local std::vector<T*> reclam_hazard<T>::hazards {};
 
 template<typename T>
-thread_local std::list<T*> reclaim_hazard<T>::free_list {};
+thread_local std::list<T*> reclam_hazard<T>::free_list {};
 
 template<typename T>
-thread_local typename reclaim_hazard<T>::Records * reclaim_hazard<T>::hazards_signaled = nullptr;
+thread_local typename reclam_hazard<T>::Records * reclam_hazard<T>::hazards_signaled = nullptr;
 
 template<typename T>
-thread_local size_t reclaim_hazard<T>::count_hazards_signaled = 0;
+thread_local size_t reclam_hazard<T>::count_hazards_signaled = 0;
 
 template<typename T>
-std::unordered_set<T *> reclaim_hazard<T>::global_hazards;
+std::unordered_set<T *> reclam_hazard<T>::global_hazards;
 
 template<typename T>
-std::mutex reclaim_hazard<T>::mutex_deinit_global_hazards;
+std::mutex reclam_hazard<T>::mutex_deinit_global_hazards;
 
 template<typename T>
-std::mutex reclaim_hazard<T>::mutex_deinit_rec_free_global;
+std::mutex reclam_hazard<T>::mutex_deinit_rec_free_global;
 
 template<typename T>
-queue_lockfree_simple<Rec<T>*> reclaim_hazard<T>::records_free;
+queue_lockfree_simple<Rec<T>*> reclam_hazard<T>::records_free;
 
 template<typename T>
-queue_lockfree_simple<Rec<T>*> reclaim_hazard<T>::records_busy;
+queue_lockfree_simple<Rec<T>*> reclam_hazard<T>::records_busy;
 
 template<typename T>
-thread_local std::list<Rec<T>*> reclaim_hazard<T>::rec_free {};
+thread_local std::list<Rec<T>*> reclam_hazard<T>::rec_free {};
 
 template<typename T>
-std::vector<Rec<T>*> reclaim_hazard<T>::rec_free_global {};
+std::vector<Rec<T>*> reclam_hazard<T>::rec_free_global {};
 
 template<typename T>
 hazard_guard<T>::hazard_guard( Rec<T> * r ){
@@ -70,7 +70,7 @@ hazard_guard<T> & hazard_guard<T>::operator=( hazard_guard<T> && other ){
 }
 
 template<typename T>
-hazard_guard<T> reclaim_hazard<T>::add_hazard( T * t ){
+hazard_guard<T> reclam_hazard<T>::add_hazard( T * t ){
   
     Records * n = nullptr;
 
@@ -196,7 +196,7 @@ hazard_guard<T> reclaim_hazard<T>::add_hazard( T * t ){
 }
 
 template<typename T>
-void reclaim_hazard<T>::retire_hazard( T * t){
+void reclam_hazard<T>::retire_hazard( T * t){
     if(t){
         hazards.push_back(t);
         if( hazards.size() > num_hazards ){ //assumes fixed number of hazards for now
@@ -206,7 +206,7 @@ void reclaim_hazard<T>::retire_hazard( T * t){
 }
 
 template<typename T>
-void reclaim_hazard<T>::scan(){
+void reclam_hazard<T>::scan(){
 
     //collect global hazards
     std::unordered_set<T*> collect_hazards;
@@ -244,14 +244,17 @@ void reclaim_hazard<T>::scan(){
 
 //dump into freelist freelist
 template<typename T>
-void reclaim_hazard<T>::reuse( T * t ){
+void reclam_hazard<T>::reuse( T * t ){
 
+    assert(t);
+    
     free_list.push_back(t);
   
     if( free_list.size() > 4 * capacity_freelist ){
         for( int i = 0; i < capacity_freelist; ++i ){
-            T * tt = free_list.front();
+            T * tt =  free_list.front();
             free_list.pop_front();
+            assert(tt);
             delete tt;
         }
     }
@@ -269,7 +272,7 @@ void reclaim_hazard<T>::reuse( T * t ){
 
 //recycle from threadlocal freelist
 template<typename T>
-T * reclaim_hazard<T>::new_from_recycled(){
+T * reclam_hazard<T>::new_from_recycled(){
     if(free_list.empty()){
         return nullptr;
     }else{
@@ -280,8 +283,8 @@ T * reclaim_hazard<T>::new_from_recycled(){
 }
 
 template<typename T>
-void reclaim_hazard<T>::thread_deinit(){
-  
+void reclam_hazard<T>::thread_deinit(){
+    
     //collect global hazards
     std::unordered_set<T*> collect_hazards;
     auto f = [&collect_hazards]( Records * const records ){
@@ -307,6 +310,7 @@ void reclaim_hazard<T>::thread_deinit(){
     std::swap(temp,hazards);
     for(auto&i: temp){
         if(i){
+            assert(i);
             if(collect_hazards.end() != collect_hazards.find(i)){
                 hazards.push_back(i);
             }else{
@@ -382,8 +386,12 @@ void reclaim_hazard<T>::thread_deinit(){
 }
 
 template<typename T>
-void reclaim_hazard<T>::final_deinit(){
-  
+void reclam_hazard<T>::final_deinit(){
+    
+#ifdef DEBUG_VERBOSE
+    std::cout << "reclam hazard::final_deinit" << std::endl;
+#endif
+
     //deallocate T's
     {
         std::lock_guard<std::mutex> l(mutex_deinit_global_hazards);

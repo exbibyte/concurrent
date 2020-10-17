@@ -35,7 +35,7 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
     
         queue_lockfree_total<int, trait_reclamation::epoch>::thread_deinit();
         
-        reclaim_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
+        reclam_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
     }
     SECTION( "pop_empty" ) {
     
@@ -51,7 +51,7 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
     
         queue_lockfree_total<int, trait_reclamation::epoch>::thread_deinit();
 
-        reclaim_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
+        reclam_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
     }
     SECTION( "multiple instances" ) {
     
@@ -82,7 +82,7 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
     
         queue_lockfree_total<int, trait_reclamation::epoch>::thread_deinit();
 
-        reclaim_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
+        reclam_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
     }
 }
 
@@ -151,7 +151,7 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
     auto dur_ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur);
     std::cout << "duration: " << dur_ms.count() << " ms. rate: " <<  (double)nums/dur_ms.count()*1000.0 << " put-get/sec." << std::endl;
 
-    reclaim_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
+    reclam_epoch<queue_lockfree_total<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
         
     size_t count = queue.size();
 

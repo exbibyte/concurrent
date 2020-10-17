@@ -1,4 +1,4 @@
-#include "reclaim_epoch.hpp"
+#include "reclam_epoch.hpp"
 
 template< typename T >
 stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::stack_lockfree_total_simple_impl(){
@@ -13,12 +13,12 @@ stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::~stack_lockfree_t
 }
 template< typename T>
 void stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::thread_init(){
-    reclaim_epoch<Node>::register_thread();
+    reclam_epoch<Node>::register_thread();
 }
 template< typename T>
 void stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::thread_deinit(){
-    reclaim_epoch<Node>::unregister_thread();
-    reclaim_epoch<Node>::deinit_thread();
+    reclam_epoch<Node>::unregister_thread();
+    reclam_epoch<Node>::deinit_thread();
 }
 template< typename T >
 bool stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::push( T const & val ){
@@ -35,7 +35,7 @@ bool stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::push_aux( No
     
     while(true){
 
-        auto guard = reclaim_epoch<Node>::critical_section();
+        auto guard = reclam_epoch<Node>::critical_section();
         
         Node * head = _head.load( std::memory_order_acq_rel );
         
@@ -57,7 +57,7 @@ std::optional<T> stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::
 
     while(true){
 
-        auto guard = reclaim_epoch<Node>::critical_section();
+        auto guard = reclam_epoch<Node>::critical_section();
         
         Node * head = _head.load( std::memory_order_acquire );
 
@@ -71,7 +71,7 @@ std::optional<T> stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::
 
             T val(std::move(head->_val));
     
-            reclaim_epoch<Node>::retire(head);
+            reclam_epoch<Node>::retire(head);
 
             return std::optional<T>(val);
     

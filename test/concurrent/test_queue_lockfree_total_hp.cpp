@@ -9,68 +9,77 @@
 
 #include "catch.hpp"
 #include "queue_lockfree_total.hpp"
+#include "threadwrap.hpp"
+#include "reclam_hazard.hpp"
 
 using namespace std;
 
-TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) { 
-    
-    SECTION( "push-pop" ) {
-    
-        queue_lockfree_total<int, trait_reclamation::hp> queue;
-            
-        size_t count = queue.size();
-        CHECK( 0 == count );
-        int val = 5;
-        queue.put(val);
-        count = queue.size();
-        CHECK( 1 == count );
+using container_type = queue_lockfree_total<int, trait_reclamation::hp>;
 
-        auto ret = queue.get();
-        count = queue.size();
-        CHECK( 0 == count );
-        CHECK( ret );
-        CHECK( 5 == *ret );
-    
-        queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
+TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) { 
+
+    SECTION( "push-pop" ) {
+
+        container_type queue;
+        
+        auto f = [&](){
+            size_t count = queue.size();
+            CHECK( 0 == count );
+            int val = 5;
+            queue.put(val);
+            count = queue.size();
+            CHECK( 1 == count );
+
+            auto ret = queue.get();
+            count = queue.size();
+            CHECK( 0 == count );
+            CHECK( ret );
+            CHECK( 5 == *ret );
+        };
+        threadwrap::this_thread_run<container_type::mem_reclam>(f);
     }
     SECTION( "pop_empty" ) {
     
-        queue_lockfree_total<int, trait_reclamation::hp> queue;
-        
-        size_t count;
-        auto ret = queue.get();
-        count = queue.size();
-        CHECK( 0 == count );
-        CHECK( !ret );
-    
-        queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
+        container_type queue;
+
+        auto f = [&](){
+            size_t count;
+            auto ret = queue.get();
+            count = queue.size();
+            CHECK( 0 == count );
+            CHECK( !ret );
+        };
+
+        threadwrap::this_thread_run<container_type::mem_reclam>(f);
     }
     SECTION( "multiple instances" ) {
     
-        queue_lockfree_total<int, trait_reclamation::hp> q1,q2;
-            
-        CHECK( 0 == q1.size() );
-        CHECK( 0 == q2.size() );
-    
-        q1.put(5);
-        q2.put(6);
+        container_type q1,q2;
 
-        CHECK( 1 == q1.size() );
-        CHECK( 1 == q2.size() );
+        auto f = [&](){
+            CHECK( 0 == q1.size() );
+            CHECK( 0 == q2.size() );
+    
+            q1.put(5);
+            q2.put(6);
+
+            CHECK( 1 == q1.size() );
+            CHECK( 1 == q2.size() );
       
-        auto b1 = q1.get();
-        CHECK( 0 == q1.size() );
-        auto b2 = q2.get();
+            auto b1 = q1.get();
+            CHECK( 0 == q1.size() );
+            auto b2 = q2.get();
 
-        CHECK( b1 );
-        CHECK( 5 == *b1 );
-        CHECK( b2 );
-        CHECK( 6 == *b2 );
+            CHECK( b1 );
+            CHECK( 5 == *b1 );
+            CHECK( b2 );
+            CHECK( 6 == *b2 );
 
-        CHECK( 0 == q1.size() );
-        CHECK( 0 == q2.size() );
-    
-        queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
+            CHECK( 0 == q1.size() );
+            CHECK( 0 == q2.size() );
+        };
+
+        threadwrap::this_thread_run<container_type::mem_reclam>(f);
     }
 }
 
@@ -78,33 +87,31 @@ TEST_CASE( "queue_lockfree_total_multithread", "[queue multithread]" ) {
         
     SECTION( "multi-thread push-pop" ) {
 
-        queue_lockfree_total<int, trait_reclamation::hp> queue;
+        container_type queue;
 
         int count_loop = 10;
         while( --count_loop >=0 ){
             size_t count;
             unsigned int num_threads = 50;
-            vector<thread> threads( num_threads );
+            vector<threadwrap> threads( num_threads );
             for( int i = 0; i < num_threads; ++i ){
-                threads[i] = std::thread( [ &, i ](){
+                threads[i] = threadwrap( [ &, i ](){
                         int val = i;
                         queue.put( val );
-                        queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
-                    } );
+                    }, identity<container_type::mem_reclam>() );
             }
             // count = queue.size();
             // cout << "queue size after push threads started: " << count << endl;
 
-            vector<thread> threads2( num_threads );
+            vector<threadwrap> threads2( num_threads );
             set<int> vals_retrieve;
             for( int i = 0; i < num_threads * 0.1; ++i ){
-                threads2[i] = std::thread( [&](){
+                threads2[i] = threadwrap( [&](){
                         auto ret = queue.get();
                         if( ret ){
                             // std::cout << pop_val << std::endl;
                         }
-                        queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
-                    } );
+                    }, identity<container_type::mem_reclam>() );
             }
             for( int i = 0; i < num_threads * 0.1; ++i ){
                 threads2[i].join();
@@ -118,13 +125,12 @@ TEST_CASE( "queue_lockfree_total_multithread", "[queue multithread]" ) {
             CHECK( ((num_threads * 0.9 ) * 1.2) >= count );
       
             for( int i = 0; i < num_threads * 0.9; ++i ){
-                threads2[i] = std::thread( [&](){
+                threads2[i] = threadwrap( [&](){
                         auto ret = queue.get();
                         if( ret ){
                             // std::cout << pop_val << std::endl;
                         }
-                        queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
-                    } );
+                    }, identity<container_type::mem_reclam>() );
             }
             for( int i = 0; i < num_threads * 0.9; ++i ){
                 threads2[i].join();
@@ -134,13 +140,12 @@ TEST_CASE( "queue_lockfree_total_multithread", "[queue multithread]" ) {
             CHECK( 0 <= count );
             CHECK( (num_threads * 0.1 ) >= count );
         }
-        queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
     }
 }
 
 TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread longlived]" ) { 
     
-    queue_lockfree_total<int, trait_reclamation::hp> queue;
+    container_type queue;
 
     unsigned int num_threads = std::thread::hardware_concurrency()/2;
     
@@ -148,24 +153,22 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
     
     vector<int> retrieved( nums, 0);
 
-    vector<thread> threads( num_threads );
-    vector<thread> threads2( num_threads );
+    vector<threadwrap> threads( num_threads );
+    vector<threadwrap> threads2( num_threads );
     
     auto t0 = std::chrono::high_resolution_clock::now();
 
     for( int i = 0; i < num_threads; ++i ){
-        threads[i] = std::thread( [ &, i ](){
+        threads[i] = threadwrap( [ &, i ](){
                 int val = nums/num_threads*i;
                 for( int j = 0; j < nums/num_threads; ++j ){
                     while( !queue.put( val + j ) ){} //force enqueue
                 }
-
-                queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
-            } );
+            }, identity<container_type::mem_reclam>() );
     }
 
     for( int i = 0; i < num_threads; ++i ){
-        threads2[i] = std::thread( [&](){
+        threads2[i] = threadwrap( [&](){
                 for( int j = 0; j < nums/num_threads; ++j ){
                     while(true){
                         if(auto ret = queue.get()){
@@ -175,9 +178,7 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
                         std::this_thread::yield();
                     } 
                 }
-
-                queue_lockfree_total<int, trait_reclamation::hp>::thread_deinit();
-            } );
+            }, identity<container_type::mem_reclam>() );
     }
   
     for( auto & i : threads ){

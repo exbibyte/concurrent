@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include "IPool.hpp"
+#include "reclam_none.hpp"
 
 //todo: specialize for memory reclamation strategies
 
@@ -19,7 +20,7 @@ public:
     enum class NodeType;
     using _t_node_type = std::atomic< NodeType >;
     using maybe = std::optional<T>;
-
+    using mem_reclam = reclam_none;
               enum class NodeType{
                   SENTINEL,
                   ITEM,

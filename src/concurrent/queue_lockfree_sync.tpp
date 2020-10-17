@@ -7,6 +7,7 @@
 
 template< typename T, trait_reclamation reclam >
 queue_lockfree_sync_impl<T, reclam>::queue_lockfree_sync_impl(){
+    assert(false && "unsupported reclamation strategy");
     Node * sentinel = new Node();
     sentinel->_type.store( NodeType::SENTINEL, std::memory_order_release );
     _head.store( sentinel );

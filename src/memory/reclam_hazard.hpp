@@ -1,8 +1,8 @@
 //--hazard pointer memory reclamation
 //---used for preventing ABA memory change
 //---uses a simple queue backing and stores temporary pointers until they are safe for reuse
-#ifndef RECLAIM_HAZARD_HPP
-#define RECLAIM_HAZARD_HPP
+#ifndef RECLAM_HAZARD_HPP
+#define RECLAM_HAZARD_HPP
 
 #include <atomic>
 #include <cstdint>
@@ -38,7 +38,7 @@ private:
 };
 
 template<class T>
-class reclaim_hazard {
+class reclam_hazard {
 public:
 
     //list containing Rec<T>*
@@ -53,12 +53,17 @@ public:
     //mark for deletion (does deallocation)
     static void retire_hazard( T * );
 
+    static void thread_init(){
+        //global object used for final cleanup on program exit
+        static reclam_global_obj _g_global_obj;
+    }
+    
     //per-thread deinit, necessary if any add_hazard/retire_hazard has been called
     static void thread_deinit();
 
     //should be called by the last thread remaining
     static void final_deinit();
-    
+
 private:
 
     static void scan();
@@ -99,8 +104,20 @@ private:
     ///final deinit helper
     static std::mutex mutex_deinit_global_hazards;
     static std::mutex mutex_deinit_rec_free_global;
+
+    class reclam_global_obj {
+    public:
+        ~reclam_global_obj(){
+#ifdef DEBUG_VERBOSE
+            std::cout << "reclam global obj destructor" << std::endl;
+#endif
+            reclam_hazard::final_deinit();
+        }
+    };
 };
 
-#include "reclaim_hazard.tpp"
+#include "reclam_hazard.tpp"
+
+
 
 #endif

@@ -23,20 +23,23 @@ public:
     using reference =          T &;
     using const_reference =    T const &;
     using size_type =          typename container_type::_t_size;
-
+    using mem_reclam =        typename ContainerType<T,reclam>::mem_reclam;
+    
         //pool traits
         constexpr static trait_size pool_size = pool_size_;
         constexpr static trait_concurrency pool_concurrency = pool_concurrency_;
         constexpr static trait_method pool_method = pool_method_;
         constexpr static trait_fairness pool_fairness = pool_fairness_;
         constexpr static trait_reclamation pool_reclamation = reclam;
-
+    
               template< class... Args >
               IPool( Args&& ... args ) : container_type( std::forward<Args>(args)... ) {}
               ~IPool(){}
 
+  //todo: get rid of these 2 functions here
   static void thread_init(){ container_type::thread_init(); }
   static void thread_deinit(){ container_type::thread_deinit(); }
+
          bool clear(){ return container_type::clear(); }
          bool empty(){ return container_type::empty(); }
     size_type size(){ return container_type::size(); }

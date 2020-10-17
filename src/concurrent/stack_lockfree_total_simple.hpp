@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "IPool.hpp"
+#include "reclam_none.hpp"
 
 template< class T, trait_reclamation reclam >
 class stack_lockfree_total_simple_impl {
@@ -13,6 +14,7 @@ public:
     using _t_size = size_t;
     using _t_val = T;
     using maybe = std::optional<T>;
+    using mem_reclam = reclam_none;
 
               stack_lockfree_total_simple_impl(){
                   assert(false && "unsupported reclamation strategy");

@@ -11,7 +11,7 @@
 #include <random>
 #include <condition_variable>
 
-#include "reclaim_epoch.hpp"
+#include "reclam_epoch.hpp"
 
 #include "catch.hpp"
 
@@ -53,7 +53,7 @@ TEST_CASE( "epoch reclamation", "[epoch]" ) {
     
     auto f = [&](int id){
 
-        reclaim_epoch<Data>::register_thread();
+        reclam_epoch<Data>::register_thread();
 
         {
             std::scoped_lock<std::mutex> lock(m_sync);
@@ -81,7 +81,7 @@ TEST_CASE( "epoch reclamation", "[epoch]" ) {
             int num = distrib(gen);
             int arr_idx = distrib_arr(gen);
 
-            auto guard = reclaim_epoch<Data>::critical_section();
+            auto guard = reclam_epoch<Data>::critical_section();
 
             if(num<=1){
                 Data * ptr = arr_data[arr_idx].load(std::memory_order_acquire);
@@ -97,7 +97,7 @@ TEST_CASE( "epoch reclamation", "[epoch]" ) {
                 Data * ptr = arr_data[arr_idx].load(std::memory_order_relaxed);
                 if(ptr && arr_data[arr_idx].compare_exchange_strong(ptr, d_new)){
                     removed.push_back(ptr->p);
-                    reclaim_epoch<Data>::retire(ptr);
+                    reclam_epoch<Data>::retire(ptr);
                     ++count_removed;
                 }else{
                     delete d_new;
@@ -123,13 +123,13 @@ TEST_CASE( "epoch reclamation", "[epoch]" ) {
 
         {
             std::scoped_lock<std::mutex> lock(m_sync);
-            reclaim_epoch<Data>::stat();
+            reclam_epoch<Data>::stat();
             for(auto i:removed){
                 removed_count[i]++;
             }
         }
 
-        reclaim_epoch<Data>::deinit_thread();
+        reclam_epoch<Data>::deinit_thread();
     };
     
     for( int i = 0; i < numthread; ++i ){

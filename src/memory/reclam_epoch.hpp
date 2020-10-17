@@ -1,5 +1,5 @@
-#ifndef RECLAIM_EPOCH_HPP
-#define RECLAIM_EPOCH_HPP
+#ifndef RECLAM_EPOCH_HPP
+#define RECLAM_EPOCH_HPP
 
 #include <atomic>
 #include <thread>
@@ -14,7 +14,7 @@
 #include "queue_lockfree_simple.hpp"
 
 template<class T>
-class reclaim_epoch {
+class reclam_epoch {
 public:
     
     using _t_data = T;
@@ -43,6 +43,10 @@ public:
         epoch_guard& operator=(epoch_guard const &) = delete;
         std::atomic<uint64_t> * flag;
     };
+
+    //todo
+    static void thread_init(){}
+    static void thread_deinit(){}
     
     static void register_thread();
     static void unregister_thread();
@@ -77,6 +81,6 @@ private:
     static thread_local int count_recycled; //debugging only
 };
 
-#include "reclaim_epoch.tpp"
+#include "reclam_epoch.tpp"
 
 #endif

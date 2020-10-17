@@ -6,7 +6,9 @@
 
 #include <cstring>
 #include <atomic>
+
 #include "IPool.hpp"
+#include "reclam_none.hpp"
 
 template< class T, trait_reclamation reclam >
 class queue_lockfree_total_impl {
@@ -15,6 +17,8 @@ public:
     using _t_size = size_t;
     using _t_val = T;
     using maybe = std::optional<_t_val>;
+    using mem_reclam = reclam_none;
+
                queue_lockfree_total_impl(){
                    assert(false && "unsupported reclamation strategy");
                }

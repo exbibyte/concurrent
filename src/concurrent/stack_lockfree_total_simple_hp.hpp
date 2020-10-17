@@ -7,6 +7,7 @@
 
 #include "IPool.hpp"
 #include "stack_lockfree_elim.hpp"
+#include "reclam_hazard.hpp"
 
 template< class T>
 class stack_lockfree_total_simple_impl< T, trait_reclamation::hp > {
@@ -27,6 +28,8 @@ public:
                             Node( T const & val ) : _val( val ), _next( nullptr ) {}
                             Node( T && val ) : _val( val ), _next( nullptr ) {}
               };
+    using mem_reclam = reclam_hazard<Node>;
+
               stack_lockfree_total_simple_impl();
               ~stack_lockfree_total_simple_impl();
   static void thread_init(){}

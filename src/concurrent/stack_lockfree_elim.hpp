@@ -3,16 +3,21 @@
 #ifndef STACK_LF_ELIM_HPP
 #define STACK_LF_ELIM_HPP
 
-#include "IPool.hpp"
 #include <atomic>
+
+#include "IPool.hpp"
+#include "reclam_none.hpp"
 
 template< class T, trait_reclamation reclam >
 class stack_lockfree_elim_impl {
 public:
     using _t_val = T;
     using maybe = std::optional<T>;
-
-              stack_lockfree_elim_impl(){}
+    using mem_reclaim = reclam_none;
+    
+              stack_lockfree_elim_impl(){
+                  assert(false && "unsupported reclamation strategy");
+              }
               ~stack_lockfree_elim_impl(){}
   static void thread_init(){}
   static void thread_deinit(){}
