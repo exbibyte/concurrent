@@ -25,11 +25,11 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
 
 # work in progress
   - implement safe memory reclamation strategies
-    - hazard pointer
-    - epoch (simplify interface/usage)
+    - epoch (simplify usage, dynamic thread addition/removal)
 	- quiescent state (todo)
-	- hyaline (todo)
   - add working memory reclamation strategies in concurrent datastructures (in progress)
+    - sync queue, split ref stack
+  - more tests for list, combining tree, etc.
 
 # currently supported implementations with safe memory reclamation:
   - lockfree queue
