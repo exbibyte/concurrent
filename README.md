@@ -98,7 +98,7 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
         i.join();
     }
 ```
-    - lockfree stack w/ hazard pointer:
+  - lockfree stack w/ hazard pointer:
 ```
 #include "stack_lockfree_total_simple.hpp"
     //...
