@@ -43,11 +43,10 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
   - release build: make DEBUG=0 all
 
 # sample usages
-    -lockfree queue w/ hazard pointer:
+  - lockfree queue w/ hazard pointer:
 ```
 #include "queue_lockfree_total.hpp"
 #include "threadwrap.hpp"
-#include "reclam_hazard.hpp"
 //...
     using container_type = queue_lockfree_total<int, trait_reclamation::hp>;
     container_type queue;
@@ -55,18 +54,18 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
     size_t nums = num_threads * 3000000;
     
     auto f = [&](){
-            size_t count = queue.size();
-            CHECK( 0 == count );
+            size_t count = queue.size(); //this is approximate if queue is under concurrent access
+            assert( 0 == count );
             int val = 5;
             queue.put(val);
-            count = queue.size();
-            CHECK( 1 == count );
+            count = queue.size(); 
+            assert( 1 == count );
 
             auto ret = queue.get();
             count = queue.size();
-            CHECK( 0 == count );
-            CHECK( ret );
-            CHECK( 5 == *ret );
+            assert( 0 == count );
+            assert( ret );
+            assert( 5 == *ret );
     };
     threadwrap::this_thread_run<container_type::mem_reclam>(f);
 

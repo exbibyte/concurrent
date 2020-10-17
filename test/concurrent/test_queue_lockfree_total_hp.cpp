@@ -10,7 +10,6 @@
 #include "catch.hpp"
 #include "queue_lockfree_total.hpp"
 #include "threadwrap.hpp"
-#include "reclam_hazard.hpp"
 
 using namespace std;
 
