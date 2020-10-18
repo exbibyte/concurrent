@@ -37,9 +37,6 @@ public:
     };
     
                                   stack_lockfree_split_reference_impl() : _head( nullptr ) {}
-
-                      static void thread_init(){}
-                      static void thread_deinit(){}
                            size_t size() const; //not guaranteed to be consistent when threads are accessing stack
                              bool put( T const & val ){ return push( val ); }
                              bool put( T && val ){ return push( val ); }

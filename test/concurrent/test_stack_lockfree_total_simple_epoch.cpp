@@ -11,11 +11,13 @@
 
 using namespace std;
 
-TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) { 
+using container_type = stack_lockfree_total_simple<int, trait_reclamation::epoch>;
+
+TEST_CASE( "stack_lockfree_total_simple_epoch", "[stack]" ) { 
 
     {
-        stack_lockfree_total_simple<int, trait_reclamation::epoch> stack;
-        stack_lockfree_total_simple<int, trait_reclamation::epoch>::thread_init();
+        container_type stack;
+        container_type::mem_reclam::thread_init();
         SECTION( "put" ) {
             size_t count = stack.size();
             CHECK( 0 == count );
@@ -40,7 +42,7 @@ TEST_CASE( "stack_lockfree_total_simple", "[stack]" ) {
             CHECK( 0 == count );
             CHECK( !ret );
         }
-        stack_lockfree_total_simple<int, trait_reclamation::epoch>::thread_deinit();
+        container_type::mem_reclam::thread_deinit();
     }
-    reclam_epoch<stack_lockfree_total_simple<int, trait_reclamation::epoch>::Node>::clear_epoch_list();
+    container_type::mem_reclam::clear_epoch_list();
 }

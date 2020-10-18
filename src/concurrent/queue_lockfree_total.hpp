@@ -23,8 +23,6 @@ public:
                    assert(false && "unsupported reclamation strategy");
                }
                ~queue_lockfree_total_impl(){}
-    static void thread_init(){}
-    static void thread_deinit(){}
           bool clear(){return true;}
           bool empty(){return true;}
        _t_size size(){ return 0; }

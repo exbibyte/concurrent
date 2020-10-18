@@ -20,8 +20,6 @@ public:
                   assert(false && "unsupported reclamation strategy");
               }
               ~stack_lockfree_total_simple_impl(){}
-  static void thread_init(){}
-  static void thread_deinit(){}
          bool clear(){return true;}
          bool empty(){return true;}
       _t_size size(){ return 0; }

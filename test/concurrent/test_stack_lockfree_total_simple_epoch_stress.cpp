@@ -18,6 +18,6 @@ TEST_CASE( "stack_lockfree_total_simple_epoch stress", "[stress]" ) {
     unsigned int num_threads = std::thread::hardware_concurrency()/2;
     bool force_push_get = true;
     stress_pool::stress_put_get_int<container_type, container_type::mem_reclam>( num_threads, p, force_push_get );
-    reclam_epoch<container_type::Node>::clear_epoch_list();
+    container_type::mem_reclam::clear_epoch_list();
     
 }

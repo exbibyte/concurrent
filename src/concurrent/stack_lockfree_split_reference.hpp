@@ -20,8 +20,6 @@ public:
                                   stack_lockfree_split_reference_impl(){
                                       assert(false && "unsupported reclamation strategy");
                                   }
-                      static void thread_init(){}
-                      static void thread_deinit(){}
                            size_t size(){ return 0; }
                              bool put( T const & val ){ return false; }
                              bool put( T && val ){ return false; }

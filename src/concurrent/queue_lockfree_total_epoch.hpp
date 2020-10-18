@@ -26,8 +26,6 @@ public:
     
                queue_lockfree_total_impl();
                ~queue_lockfree_total_impl();
-   static void thread_init(); //currently requires all participating threads to sync after this call
-   static void thread_deinit(); //currently requires all participating threads to sync before this call
           bool clear();
           bool empty();
        _t_size size(); //approximate count of the container size

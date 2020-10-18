@@ -24,8 +24,6 @@ public:
 
               stack_lockfree_elim_impl(size_t array_size = 2) : _elim_array(array_size) {}
               ~stack_lockfree_elim_impl(){}
-  static void thread_init(){ internal_stack::thread_init(); }
-  static void thread_deinit(){ internal_stack::thread_deinit(); }
          bool clear(){ return _stack.clear(); }
          bool empty(){ return _stack.empty(); }
        size_t size(){ return _stack.size(); }

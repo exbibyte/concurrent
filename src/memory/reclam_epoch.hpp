@@ -44,9 +44,13 @@ public:
         std::atomic<uint64_t> * flag;
     };
 
-    //todo
-    static void thread_init(){}
-    static void thread_deinit(){}
+    static void thread_init(){
+        register_thread();
+    }
+    static void thread_deinit(){
+        recycle_final();
+        //todo: add safe thread unregistering
+    }
     
     static void register_thread();
     static void unregister_thread();

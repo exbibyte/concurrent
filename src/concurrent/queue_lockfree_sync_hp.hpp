@@ -48,8 +48,6 @@ public:
 
                queue_lockfree_sync_impl();
                ~queue_lockfree_sync_impl();
-   static void thread_init(){}
-   static void thread_deinit(){}
           bool clear();
           bool empty();
        _t_size size();                                                 //approximate count of the container size

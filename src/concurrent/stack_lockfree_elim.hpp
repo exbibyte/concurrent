@@ -19,8 +19,6 @@ public:
                   assert(false && "unsupported reclamation strategy");
               }
               ~stack_lockfree_elim_impl(){}
-  static void thread_init(){}
-  static void thread_deinit(){}
          bool clear(){ return true; }
          bool empty(){ return true; }
        size_t size(){ return 0; }

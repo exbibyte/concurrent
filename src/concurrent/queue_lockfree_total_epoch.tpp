@@ -13,8 +13,6 @@ template< typename T >
 queue_lockfree_total_impl<T, trait_reclamation::epoch>::~queue_lockfree_total_impl(){
 
     //must ensure there are no other threads accessing the datastructure
-
-    thread_deinit();
     
     clear();
     
@@ -28,18 +26,6 @@ queue_lockfree_total_impl<T, trait_reclamation::epoch>::~queue_lockfree_total_im
             }
         }
     }
-}
-
-template< typename T >
-void queue_lockfree_total_impl<T, trait_reclamation::epoch>::thread_init(){
-    ///currently requires participating threads register and wait until all threads are registered
-    reclam_epoch<Node>::register_thread();
-}
-
-template< typename T >
-void queue_lockfree_total_impl<T, trait_reclamation::epoch>::thread_deinit(){
-    ///currently requires all participating threads to be finished with their tasks before calling this
-    reclam_epoch<Node>::deinit_thread();
 }
 
 template< typename T >

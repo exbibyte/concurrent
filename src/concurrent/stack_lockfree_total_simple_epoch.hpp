@@ -30,8 +30,6 @@ public:
     using mem_reclam = reclam_epoch<Node>;
               stack_lockfree_total_simple_impl();
               ~stack_lockfree_total_simple_impl();
-  static void thread_init();
-  static void thread_deinit();
          bool clear();
          bool empty() const;
       _t_size size() const;

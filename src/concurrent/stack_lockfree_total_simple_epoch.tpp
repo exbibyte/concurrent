@@ -11,15 +11,6 @@ stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::~stack_lockfree_t
 
     assert( _head.load() == nullptr );
 }
-template< typename T>
-void stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::thread_init(){
-    reclam_epoch<Node>::register_thread();
-}
-template< typename T>
-void stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::thread_deinit(){
-    reclam_epoch<Node>::unregister_thread();
-    reclam_epoch<Node>::deinit_thread();
-}
 template< typename T >
 bool stack_lockfree_total_simple_impl<T, trait_reclamation::epoch>::push( T const & val ){
     Node * new_node = new Node( val );

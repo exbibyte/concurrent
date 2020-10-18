@@ -36,10 +36,6 @@ public:
               IPool( Args&& ... args ) : container_type( std::forward<Args>(args)... ) {}
               ~IPool(){}
 
-  //todo: get rid of these 2 functions here
-  static void thread_init(){ container_type::thread_init(); }
-  static void thread_deinit(){ container_type::thread_deinit(); }
-
          bool clear(){ return container_type::clear(); }
          bool empty(){ return container_type::empty(); }
     size_type size(){ return container_type::size(); }
