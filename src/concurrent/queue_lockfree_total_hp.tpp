@@ -15,10 +15,6 @@ queue_lockfree_total_impl<T, trait_reclamation::hp>::~queue_lockfree_total_impl(
     //must ensure there are no other threads accessing the datastructure
   
     clear();
-
-    thread_deinit();
-
-    // reclam_hazard<Node>::final_deinit();
     
     if( _head ){
         Node * n = _head.load();
@@ -30,11 +26,6 @@ queue_lockfree_total_impl<T, trait_reclamation::hp>::~queue_lockfree_total_impl(
             }
         }
     }
-}
-
-template< typename T >
-void queue_lockfree_total_impl<T, trait_reclamation::hp>::thread_deinit(){
-    reclam_hazard<Node>::thread_deinit();
 }
 
 template< typename T >

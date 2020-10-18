@@ -8,12 +8,6 @@ stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::~stack_lockfree_tota
     clear();
 
     assert( _head.load() == nullptr );
-    
-    reclam_hazard<Node>::final_deinit();
-}
-template< typename T>
-void stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::thread_deinit(){
-    reclam_hazard<Node>::thread_deinit();
 }
 template< typename T >
 bool stack_lockfree_total_simple_impl<T, trait_reclamation::hp>::push( T const & val ){

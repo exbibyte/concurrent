@@ -11,6 +11,10 @@
 template< class T >
 class stack_lockfree_elim_impl< T, trait_reclamation::hp > {
 public:
+
+    static_assert(std::is_move_constructible<T>::value);
+    static_assert(std::is_move_assignable<T>::value);
+    
     using _t_size = size_t;
     using _t_val = T;
     using maybe = std::optional<T>;

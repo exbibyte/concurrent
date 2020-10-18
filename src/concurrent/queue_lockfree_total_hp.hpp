@@ -26,7 +26,6 @@ public:
     
                queue_lockfree_total_impl();
                ~queue_lockfree_total_impl();
-   static void thread_deinit(); //to be called when a thread exits
           bool clear();
           bool empty();
        _t_size size(); //approximate count of the container size

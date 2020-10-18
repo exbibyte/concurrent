@@ -14,6 +14,7 @@ class stack_lockfree_total_simple_impl< T, trait_reclamation::hp > {
 public:
 
     static_assert(std::is_move_constructible<T>::value);
+    static_assert(std::is_move_assignable<T>::value);
     
     using _t_size = size_t;
     using _t_val = T;
@@ -32,8 +33,6 @@ public:
 
               stack_lockfree_total_simple_impl();
               ~stack_lockfree_total_simple_impl();
-  static void thread_init(){}
-  static void thread_deinit();
          bool clear();
          bool empty() const;
       _t_size size() const;
