@@ -27,7 +27,6 @@ public:
             std::condition_variable cv;
             for( int i = 0; i < num_threads; ++i ){
                 threads[i] = threadwrap( [ &, i ](){
-                        // Pool::thread_init();
                         {
                             std::scoped_lock<std::mutex> l(m);
                             ++sync;
@@ -59,12 +58,10 @@ public:
                             std::unique_lock<std::mutex> l(m);
                             cv.wait(l, [&](){return sync2>=2*num_threads;});
                         }
-                        // Pool::thread_deinit();
                     }, identity<mem_manager>()... );
             }
             for( int i = 0; i < num_threads; ++i ){
                 threads2[i] = threadwrap( [&](){
-                        // Pool::thread_init();
                         {
                             std::scoped_lock<std::mutex> l(m);
                             ++sync;
@@ -96,7 +93,6 @@ public:
                             std::unique_lock<std::mutex> l(m);
                             cv.wait(l, [&](){return sync2>=2*num_threads;});
                         }
-                        // Pool::thread_deinit();
                     }, identity<mem_manager>()... );
             }
             for( auto & i : threads ){
