@@ -103,21 +103,24 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
   - lockfree synchronous queue w/ hazard pointer:
 ```
 #include "queue_lockfree_sync.hpp"
-    //...
     using container_type = queue_lockfree_sync<int, trait_reclamation::hp>;
     //... same as above
 ```
   - lockfree stack w/ hazard pointer:
 ```
 #include "stack_lockfree_total_simple.hpp"
-    //...
     using container_type = stack_lockfree_total_simple<int, trait_reclamation::hp>;
     //... same as above
 ```
   - lockfree elimination stack w/ hazard pointer:
 ```
 #include "stack_lockfree_elim.hpp"
-    //...
     using container_type = stack_lockfree_elim<int, trait_reclamation::hp>;
+    //... same as above
+```
+  - lockfree split reference stack w/ hazard pointer:
+```
+#include "stack_lockfree_split_reference.hpp"
+    using container_type = stack_lockfree_split_reference<int, trait_reclamation::hp>;
     //... same as above
 ```
