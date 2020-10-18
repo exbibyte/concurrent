@@ -34,6 +34,7 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
 # currently supported implementations with safe memory reclamation:
   - lockfree queue
     - queue_lockfree_total with hazard pointer / epoch based reclamation
+    - queue_lockfree_sync with hazard pointer
   - lockfree stack
     - stack_lockfree_total_simple with hazard pointer / epoch based reclamation
     - stack_lockfree_elim with hazard pointer
@@ -41,6 +42,7 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
 # other notes
   - currently uses C++1z
   - release build: make DEBUG=0 all
+  - user data need to be move constructible and move assignable
 
 # sample usages
   - lockfree queue w/ hazard pointer:
@@ -98,10 +100,24 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
         i.join();
     }
 ```
+  - lockfree synchronous queue w/ hazard pointer:
+```
+#include "queue_lockfree_sync.hpp"
+    //...
+    using container_type = queue_lockfree_sync<int, trait_reclamation::hp>;
+    //... same as above
+```
   - lockfree stack w/ hazard pointer:
 ```
 #include "stack_lockfree_total_simple.hpp"
     //...
     using container_type = stack_lockfree_total_simple<int, trait_reclamation::hp>;
     //... same as above
-```  
+```
+  - lockfree elimination stack w/ hazard pointer:
+```
+#include "stack_lockfree_elim.hpp"
+    //...
+    using container_type = stack_lockfree_elim<int, trait_reclamation::hp>;
+    //... same as above
+```

@@ -15,56 +15,23 @@ class queue_lockfree_sync_impl {
 public:
     using _t_size = size_t;
     using _t_val = T;
-    class Node;
-    using _t_node = std::atomic< Node * >;
-    enum class NodeType;
-    using _t_node_type = std::atomic< NodeType >;
     using maybe = std::optional<T>;
     using mem_reclam = reclam_none;
-              enum class NodeType{
-                  SENTINEL,
-                  ITEM,
-                  RESERVATION,
-                  BUSY,
-                  FULFILLED,
-                  COMPLETE,
-              };
-              class Node {
-              public:
-                     _t_node _next;
-		      _t_val _val; //container value storage
-		_t_node_type _type; //node type( ITEM: enquing thread waiting for synchronization, RESERVATION: dequing thread waiting for synchronization )
-		             Node(): _next( nullptr ) {
-                         _type.store( NodeType::RESERVATION );
-                     }
-                     Node( _t_val const & val ): _val( val ), _next( nullptr ){
-                         _type.store( NodeType::ITEM );
-                     }
-                     Node( _t_val && val ): _val( val ), _next( nullptr ){
-                         _type.store( NodeType::ITEM );
-                     }
-              };
-
-               queue_lockfree_sync_impl();
-               ~queue_lockfree_sync_impl();
+               queue_lockfree_sync_impl(){
+                   assert(false && "unsupported reclamation strategy");
+               }
+               ~queue_lockfree_sync_impl(){}
    static void thread_init(){}
    static void thread_deinit(){}
-          bool clear();
-          bool empty();
-       _t_size size();                                                 //approximate count of the container size
-          bool put( _t_val const & val ){ return push_back( val ); }
-          bool put( _t_val && val ){ return push_back( val ); }
-         maybe get(){ return pop_front(); }
-private:
-          bool push_back( _t_val const & val );
-          bool push_back( _t_val && val );
-          bool push_back_aux( Node * );
-         maybe pop_front();
-       _t_node _head;
-       _t_node _tail;
+          bool clear(){ return true; }
+          bool empty(){ return true; }
+       _t_size size(){ return 0; }
+          bool put( _t_val const & val ){ return false; }
+          bool put( _t_val && val ){ return false; }
+         maybe get(){ return std::nullopt; }
 };
 
-#include "queue_lockfree_sync.tpp"
+#include "queue_lockfree_sync_hp.hpp"
 
 template< class T, trait_reclamation reclam >
 using queue_lockfree_sync = IPool< T, queue_lockfree_sync_impl,

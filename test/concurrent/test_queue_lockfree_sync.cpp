@@ -11,16 +11,19 @@
 
 #include "catch.hpp"
 #include "queue_lockfree_sync.hpp"
+#include "threadwrap.hpp"
 
 using namespace std;
 
+using container_type = queue_lockfree_sync<int, trait_reclamation::hp>;
+
 TEST_CASE( "queue_lockfree_sync bulk operations", "[bulk]" ) { 
 
-    queue_lockfree_sync<int, trait_reclamation::not_applicable> queue;
+    container_type queue;
 
     unsigned int num_threads = 100;
-    vector<thread> threads_put( num_threads );
-    vector<thread> threads_get( num_threads );
+    vector<threadwrap> threads_put( num_threads );
+    vector<threadwrap> threads_get( num_threads );
     vector<int> ret_vals_put( num_threads, 0 );
     vector<int> ret_vals_get( num_threads, 0 );
     vector<int> items_get( num_threads, -1 );
@@ -28,14 +31,14 @@ TEST_CASE( "queue_lockfree_sync bulk operations", "[bulk]" ) {
     //put
     for( int i = 0; i < num_threads; ++i ){
         int * ret_val_ptr = & ret_vals_put[i];
-        threads_put[i] = std::thread( [i,ret_val_ptr,&queue](){
+        threads_put[i] = threadwrap( [i,ret_val_ptr,&queue](){
                 int val = i;
                 bool ret;
                 ret = queue.put( val );
                 if( ret ){
                     *ret_val_ptr = 1;
                 }
-            } );
+            }, identity<container_type::mem_reclam>() );
     }
     std::this_thread::sleep_for (std::chrono::milliseconds(5000));
     CHECK( queue.size() == num_threads );
@@ -44,13 +47,13 @@ TEST_CASE( "queue_lockfree_sync bulk operations", "[bulk]" ) {
     for( int i = 0; i < num_threads; ++i ){
         int * ret_val_ptr = & ret_vals_get[i];
         int * item_ptr = & items_get[i];
-        threads_get[i] = std::thread( [i,ret_val_ptr,item_ptr,&queue](){
+        threads_get[i] = threadwrap( [i,ret_val_ptr,item_ptr,&queue](){
                 auto ret = queue.get();
                 if( ret ){
                     *ret_val_ptr = 1;
                     *item_ptr = *ret;
                 }
-            } );
+            }, identity<container_type::mem_reclam>() );
     }
 
     auto start = std::chrono::system_clock::now();
@@ -99,11 +102,11 @@ TEST_CASE( "queue_lockfree_sync bulk operations", "[bulk]" ) {
 }
 TEST_CASE( "queue_lockfree_sync bulk operations reversed", "[bulk_rev]" ) { 
 
-    queue_lockfree_sync<int, trait_reclamation::not_applicable> queue;
+    container_type queue;
 
     unsigned int num_threads = 100;
-    vector<thread> threads_put( num_threads );
-    vector<thread> threads_get( num_threads );
+    vector<threadwrap> threads_put( num_threads );
+    vector<threadwrap> threads_get( num_threads );
     vector<int> ret_vals_put( num_threads, 0 );
     vector<int> ret_vals_get( num_threads, 0 );
     vector<int> items_get( num_threads, -1 );
@@ -112,13 +115,13 @@ TEST_CASE( "queue_lockfree_sync bulk operations reversed", "[bulk_rev]" ) {
     for( int i = 0; i < num_threads; ++i ){
         int * ret_val_ptr = & ret_vals_get[i];
         int * item_ptr = & items_get[i];
-        threads_get[i] = std::thread( [i,ret_val_ptr,item_ptr,&queue](){
+        threads_get[i] = threadwrap( [i,ret_val_ptr,item_ptr,&queue](){
                 auto ret = queue.get();
                 if( ret ){
                     *ret_val_ptr = 1;
                     *item_ptr = *ret;
                 }
-            } );
+            }, identity<container_type::mem_reclam>() );
     }
 
     std::this_thread::sleep_for (std::chrono::milliseconds(5000));
@@ -127,14 +130,14 @@ TEST_CASE( "queue_lockfree_sync bulk operations reversed", "[bulk_rev]" ) {
     //put
     for( int i = 0; i < num_threads; ++i ){
         int * ret_val_ptr = & ret_vals_put[i];
-        threads_put[i] = std::thread( [i,ret_val_ptr,&queue](){
+        threads_put[i] = threadwrap( [i,ret_val_ptr,&queue](){
                 int val = i;
                 bool ret;
                 ret = queue.put( val );
                 if( ret ){
                     *ret_val_ptr = 1;
                 }
-            } );
+            }, identity<container_type::mem_reclam>() );
     }
     
     auto start = std::chrono::system_clock::now();
@@ -184,11 +187,11 @@ TEST_CASE( "queue_lockfree_sync bulk operations reversed", "[bulk_rev]" ) {
 }
 TEST_CASE( "queue_lockfree_sync interleaved operations", "[interleaved]" ) {
 
-    queue_lockfree_sync<int, trait_reclamation::not_applicable> queue;
+    container_type queue;
 
     unsigned int num_threads = 100;
-    vector<thread> threads_put( num_threads );
-    vector<thread> threads_get( num_threads );
+    vector<threadwrap> threads_put( num_threads );
+    vector<threadwrap> threads_get( num_threads );
     vector<int> ret_vals_put( num_threads, 0 );
     vector<int> ret_vals_get( num_threads, 0 );
     vector<int> items_get( num_threads, -1 );
@@ -197,26 +200,26 @@ TEST_CASE( "queue_lockfree_sync interleaved operations", "[interleaved]" ) {
     for( int i = 0; i < num_threads; ++i ){
         {
             int * ret_val_ptr = & ret_vals_put[i];
-            threads_put[i] = std::thread( [i,ret_val_ptr,&queue](){
+            threads_put[i] = threadwrap( [i,ret_val_ptr,&queue](){
                     int val = i;
                     bool ret;
                     ret = queue.put( val );
                     if( ret ){
                         *ret_val_ptr = 1;
                     }
-                } );
+                }, identity<container_type::mem_reclam>() );
         }
         // std::this_thread::sleep_for (std::chrono::milliseconds(1000));	
         {
             int * ret_val_ptr = & ret_vals_get[i];
             int * item_ptr = & items_get[i];
-            threads_get[i] = std::thread( [i,ret_val_ptr,item_ptr,&queue](){
+            threads_get[i] = threadwrap( [i,ret_val_ptr,item_ptr,&queue](){
                     auto ret = queue.get();
                     if( ret ){
                         *ret_val_ptr = 1;
                         *item_ptr = *ret;
                     }
-                } );
+                }, identity<container_type::mem_reclam>() );
         }
     }
 
@@ -268,11 +271,11 @@ TEST_CASE( "queue_lockfree_sync interleaved operations", "[interleaved]" ) {
 
 TEST_CASE( "queue_lockfree_sync bulk operations functor", "[bulk functor]" ) { 
 
-    queue_lockfree_sync<int, trait_reclamation::not_applicable> queue;
+    container_type queue;
 
     unsigned int num_threads = 100;
-    vector<thread> threads_put( num_threads );
-    vector<thread> threads_get( num_threads );
+    vector<threadwrap> threads_put( num_threads );
+    vector<threadwrap> threads_get( num_threads );
     vector<int> ret_vals_put( num_threads, 0 );
     vector<int> ret_vals_get( num_threads, 0 );
     vector<int> items_get( num_threads, -1 );
@@ -280,14 +283,14 @@ TEST_CASE( "queue_lockfree_sync bulk operations functor", "[bulk functor]" ) {
     //put
     for( int i = 0; i < num_threads; ++i ){
         int * ret_val_ptr = & ret_vals_put[i];
-        threads_put[i] = std::thread( [i,ret_val_ptr,&queue](){
+        threads_put[i] = threadwrap( [i,ret_val_ptr,&queue](){
                 int val = i;
                 bool ret;
                 ret = queue.put( val );
                 if( ret ){
                     *ret_val_ptr = 1;
                 }
-            } );
+            }, identity<container_type::mem_reclam>() );
     }
     std::this_thread::sleep_for (std::chrono::milliseconds(5000));
     CHECK( queue.size() == num_threads );
@@ -296,7 +299,7 @@ TEST_CASE( "queue_lockfree_sync bulk operations functor", "[bulk functor]" ) {
     for( int i = 0; i < num_threads; ++i ){
         int * ret_val_ptr = & ret_vals_get[i];
         int * item_ptr = & items_get[i];
-        threads_get[i] = std::thread( [i,ret_val_ptr,item_ptr,&queue](){
+        threads_get[i] = threadwrap( [i,ret_val_ptr,item_ptr,&queue](){
                 function<void(std::optional<int>)> f_get = [&](std::optional<int> v){
                     if(v){
                         *ret_val_ptr = 1;
@@ -304,7 +307,7 @@ TEST_CASE( "queue_lockfree_sync bulk operations functor", "[bulk functor]" ) {
                     }
                 };
                 queue.get_with( f_get );
-            } );
+            }, identity<container_type::mem_reclam>() );
     }
 
     auto start = std::chrono::system_clock::now();
