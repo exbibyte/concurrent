@@ -131,9 +131,10 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
  - throughput:
 
     Hardware: Intel E5-2630, 6 cores, 12 threads
+
     Test setup: force enqueue / dequeue 1000,000 integers per thread
     
-    | container | threads (enqueue/dequeue) | throughput |
+    | container | threads (enqueue/dequeue) | throughput /sec |
     |---|---|---|
     | queue_lockfree_total_hp  | 6/6 | 3.65e6 |
     | queue_lockfree_total_epoch  | 6/6 | 2.83e6 |
