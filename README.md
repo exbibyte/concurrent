@@ -45,7 +45,7 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
   - release build: make DEBUG=0 all
   - user data need to be move constructible and move assignable
 
-# sample usages
+1;5202;0c# sample usages
   - lockfree queue w/ hazard pointer:
 ```
 #include "queue_lockfree_total.hpp"
@@ -143,5 +143,6 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
     | stack_lockfree_total_epoch | 6/6 | 4.68e6 |
     | stack_lockfree_elim_hp | 6/6 | 3.70e6 |
     | stack_lockfree_split_reference_hp | 6/6 | 1.55e6 |
+    | stack with std::vector & mutex | 6/6 | 2.25e6 |
 
   - latency: todo
