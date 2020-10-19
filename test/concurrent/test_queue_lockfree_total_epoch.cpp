@@ -36,8 +36,6 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
         CHECK( 5 == *ret );
     
         container_type::mem_reclam::thread_deinit();
-
-        container_type::mem_reclam::clear_epoch_list();
     }
     SECTION( "pop_empty" ) {
     
@@ -52,8 +50,6 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
         CHECK( !ret );
     
         container_type::mem_reclam::thread_deinit();
-        
-        container_type::mem_reclam::clear_epoch_list();
     }
     SECTION( "multiple instances" ) {
     
@@ -83,8 +79,6 @@ TEST_CASE( "queue_lockfree_total", "[queue push pop]" ) {
         CHECK( 0 == q2.size() );
     
         container_type::mem_reclam::thread_deinit();
-
-        container_type::mem_reclam::clear_epoch_list();
     }
 }
 
@@ -151,8 +145,6 @@ TEST_CASE( "queue_lockfree_total_multithread_long_lived", "[queue multithread lo
     std::chrono::duration<double> dur = t1 - t0;
     auto dur_ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur);
     std::cout << "duration: " << dur_ms.count() << " ms. rate: " <<  (double)nums/dur_ms.count()*1000.0 << " put-get/sec." << std::endl;
-
-    container_type::mem_reclam::clear_epoch_list();
         
     size_t count = queue.size();
 

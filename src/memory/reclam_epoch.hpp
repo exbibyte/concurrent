@@ -45,6 +45,7 @@ public:
     };
 
     static void thread_init(){
+        static reclam_global_obj _g_global_obj;
         register_thread();
     }
     static void thread_deinit(){
@@ -83,6 +84,17 @@ private:
     static queue_lockfree_simple<std::atomic<uint64_t>*> epoch_list;
 
     static thread_local int count_recycled; //debugging only
+
+    class reclam_global_obj {
+    public:
+        ~reclam_global_obj(){
+#ifdef DEBUG_VERBOSE
+            std::cout << "reclam global obj destructor" << std::endl;
+#endif
+            reclam_epoch::clear_epoch_list();
+        }
+    };
+
 };
 
 #include "reclam_epoch.tpp"

@@ -44,5 +44,4 @@ TEST_CASE( "stack_lockfree_total_simple_epoch", "[stack]" ) {
         }
         container_type::mem_reclam::thread_deinit();
     }
-    container_type::mem_reclam::clear_epoch_list();
 }
