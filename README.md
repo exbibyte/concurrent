@@ -38,6 +38,7 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
   - lockfree stack
     - stack_lockfree_total_simple with hazard pointer / epoch based reclamation
     - stack_lockfree_elim with hazard pointer
+    - stack_lockfree_split_reference with hazard pointer
 
 # other notes
   - currently uses C++1z
@@ -124,3 +125,22 @@ They are based on references such as: C++ Concurrency in Action, Art of Multipro
     using container_type = stack_lockfree_split_reference<int, trait_reclamation::hp>;
     //... same as above
 ```
+
+# ballpark performance tests
+    
+ - throughput:
+
+    Hardware: Intel E5-2630, 6 cores, 12 threads
+    Test setup: force enqueue / dequeue 1000,000 integers per thread
+    
+    | container | threads (enqueue/dequeue) | throughput |
+    |---|---|---|
+    | queue_lockfree_total_hp  | 6/6 | 3.65e6 |
+    | queue_lockfree_total_epoch  | 6/6 | 2.83e6 |
+    | queue_lockfree_sync_hp | 6/6 | 835422 |
+    | stack_lockfree_total_hp | 6/6 | 3.75e6 |
+    | stack_lockfree_total_epoch | 6/6 | 4.68e6 |
+    | stack_lockfree_elim_hp | 6/6 | 3.70e6 |
+    | stack_lockfree_split_reference_hp | 6/6 | 1.55e6 |
+
+  - latency: todo
